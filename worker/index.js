@@ -20,8 +20,6 @@ function json(data, status = 200, origin = FRONTEND_ORIGIN) {
       "Content-Type": "application/json; charset=utf-8",
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
-  const contentLength = Number(request.headers.get("Content-Length") || 0);
-  if (contentLength > 32768) fail("Request body is too large.", 413);
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Vary": "Origin",
@@ -31,6 +29,8 @@ function json(data, status = 200, origin = FRONTEND_ORIGIN) {
 }
 function fail(message, status = 500) { const e = new Error(message); e.status = status; throw e; }
 async function bodyJson(request) {
+  const contentLength = Number(request.headers.get("Content-Length") || 0);
+  if (contentLength > 32768) fail("Request body is too large.", 413);
   try { return await request.json(); } catch { fail("Request body must be valid JSON.", 400); }
 }
 function ruleBasedAnalysis(message) {
@@ -65,7 +65,7 @@ async function analyzeMessage(message, env) {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ...ruleBasedAnalysis(message), aiFallbackReason: "AI service unavailable; rule-based analysis used." };
     const raw = data.content?.find(item => item.type === "text")?.text || "";
-    const parsed = JSON.parse(raw.replace(/^`{3}json\\s*/i, "").replace(/`{3}$/, "").trim());
+    const parsed = JSON.parse(raw.replace(/^`{3}json\s*/i, "").replace(/`{3}$/, "").trim());
     return {
       riskLevel: ["LOW", "MEDIUM", "HIGH"].includes(parsed.riskLevel) ? parsed.riskLevel : "MEDIUM",
       riskScore: Math.max(0, Math.min(100, Number(parsed.riskScore) || 0)),
