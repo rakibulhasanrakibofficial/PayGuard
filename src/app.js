@@ -11,6 +11,21 @@ const app = express();
 const root = path.dirname(fileURLToPath(import.meta.url));
 app.disable("x-powered-by");
 app.use(helmet({ contentSecurityPolicy: false }));
+
+// GitHub Pages is static hosting, so browser requests to this API are cross-origin.
+const allowedOrigin = (process.env.FRONTEND_ORIGIN || "https://rakibulhasanrakibofficial.github.io").replace(/\/$/, "");
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  res.setHeader("Vary", "Origin");
+  if (origin && origin === allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(express.json({ limit: "32kb" }));
 app.use("/api", rateLimit({ windowMs: 60_000, limit: 90, standardHeaders: "draft-7", legacyHeaders: false }));
