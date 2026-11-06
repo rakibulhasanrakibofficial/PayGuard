@@ -2,12 +2,12 @@
 
 AI-assisted invoicing and payment scam-risk analysis for freelancers and small businesses.
 
-> **Sandbox demo:** PayGuard uses PayPal Sandbox. It does not move real money. AI can identify suspicious language but cannot verify payments. Only authenticated PayPal API responses can confirm PayPal transaction details.
+> **Sandbox demo only:** PayGuard uses PayPal Sandbox. It does not move real money. AI can identify suspicious language but cannot verify payments. Only authenticated PayPal API records can confirm transaction details.
 
 ## Features
 
 - Create and send invoices through PayPal Invoicing API (Sandbox).
-- Analyze suspicious client messages with optional Anthropic Claude; deterministic rule-based fallback works without an AI key.
+- Analyze suspicious client messages with optional Anthropic Claude; rule-based fallback works without an AI key.
 - Look up a PayPal capture ID directly against PayPal's API.
 - Verify incoming PayPal webhook signatures.
 - Responsive vanilla HTML/CSS/JavaScript dashboard.
@@ -21,29 +21,43 @@ Node.js 20+, Express, PayPal REST API, optional Anthropic Messages API, vanilla 
 
 ```bash
 npm install
-cp .env.example .env
 npm run dev
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`. Add Sandbox credentials to `.env`, then open http://localhost:3000.
+Open http://localhost:3000. Configure the environment variables below in a local `.env` file. The repository intentionally does not include an `.env.example` file. Never commit `.env` or paste secret values into chat.
 
-## PayPal Sandbox setup
+## Environment variables
 
-1. Sign in at https://developer.paypal.com/.
-2. Open Apps & Credentials and select **Sandbox**.
-3. Create a REST app and copy its Client ID and Secret into `.env`.
-4. Use a Sandbox Business account as the invoice sender and a Sandbox Personal account as the recipient.
-5. Test with Sandbox accounts only.
+| Variable | Purpose |
+|---|---|
+| `PAYPAL_CLIENT_ID` | PayPal Developer Dashboard Sandbox app client ID |
+| `PAYPAL_CLIENT_SECRET` | PayPal Developer Dashboard Sandbox app secret |
+| `PAYPAL_BASE_URL` | Optional; defaults to PayPal Sandbox API |
+| `PAYPAL_WEBHOOK_ID` | Required to verify incoming webhook signatures |
+| `ANTHROPIC_API_KEY` | Optional; enables Claude-assisted analysis |
+| `ANTHROPIC_MODEL` | Optional; Claude model name |
+| `FRONTEND_ORIGIN` | GitHub Pages origin allowed by CORS |
+| `PORT` | Hosting provider normally sets this |
 
-The invoice flow calls `POST /v2/invoicing/invoices` and `POST /v2/invoicing/invoices/{id}/send`. Capture lookup calls `GET /v2/payments/captures/{id}`.
+Never put PayPal or AI secrets in `public/`, frontend JavaScript, GitHub Pages, or a committed file. Add them only to the backend host's environment-variable settings.
 
-## Optional AI setup
+## Deploy
 
-Set `ANTHROPIC_API_KEY` and optionally `ANTHROPIC_MODEL`. Without a key, PayGuard uses its local rule-based detector. Never put API keys in frontend files or commit `.env`.
+### Frontend: GitHub Pages
 
-## Webhooks
+The GitHub Actions workflow publishes only the `public/` directory. In the repository, open **Settings → Pages → Build and deployment → Source** and select **GitHub Actions**.
 
-Deploy the server, configure a PayPal webhook URL at `https://YOUR_HOST/api/paypal/webhook`, subscribe to relevant events, and set the webhook ID in `PAYPAL_WEBHOOK_ID`. This MVP verifies webhook signatures but does **not** yet persist event IDs, deduplicate deliveries, or execute event side effects.
+After the workflow succeeds, the frontend URL is:
+
+`https://rakibulhasanrakibofficial.github.io/PayGuard/`
+
+### Backend: Render
+
+The `render.yaml` Blueprint describes the Node/Express API. In Render, create a Blueprint from this repository and add PayPal Sandbox credentials and the optional Anthropic key in the service's Environment settings. Keep all secrets on Render.
+
+After Render provides the backend URL, edit `public/config.js` and set `window.PAYGUARD_API_BASE` to that origin without a trailing slash. Commit the change; GitHub Actions will publish the updated frontend. The browser then calls the Render API.
+
+The free Render service may sleep when idle, so the first request can take longer. GitHub Pages alone cannot run the Express backend.
 
 ## API
 
@@ -51,17 +65,17 @@ Deploy the server, configure a PayPal webhook URL at `https://YOUR_HOST/api/payp
 |---|---|---|
 | GET | `/api/health` | Health check |
 | POST | `/api/scam/analyze` | Analyze a message |
-| POST | `/api/invoices` | Create and send Sandbox invoice |
-| GET | `/api/payments/capture/:captureId` | Query capture from PayPal |
+| POST | `/api/invoices` | Create and send a Sandbox invoice |
+| GET | `/api/payments/capture/:captureId` | Query a capture from PayPal |
 | POST | `/api/paypal/webhook` | Verify webhook signature |
 
 ## Tests
 
-Run `npm test`. The test suite covers local scam rules and input validation helpers where available.
+Run `npm test`. Tests cover rule-based scam signals and basic input validation. Live PayPal/AI calls require credentials and are not covered by the offline test suite.
 
 ## Important limitations
 
-This is a functional learning MVP, **not production-ready financial software**. Before real users or real transactions, add authentication and authorization, persistent storage, invoice ownership checks, webhook event persistence and idempotency, full order/checkout flow, CSRF strategy, audit logs, privacy/retention controls, robust monitoring, and security review. Reconcile amount, currency, payer and invoice/order reference before treating a payment as satisfying an invoice. Do not trust screenshots, forwarded emails, or AI conclusions as payment proof.
+This is a learning MVP, **not production-ready financial software**. It currently has no user authentication or invoice ownership controls; a deployed demo must use a dedicated PayPal Sandbox account and synthetic data only. Webhook signatures are verified, but this MVP does not persist event IDs, deduplicate deliveries, or execute event side effects. Before real users or real transactions, add authentication/authorization, ownership checks, persistent audit records, full checkout/order reconciliation, privacy and retention controls, robust monitoring, and an independent security review. Do not trust screenshots, forwarded emails, or AI conclusions as payment proof.
 
 ## License
 
