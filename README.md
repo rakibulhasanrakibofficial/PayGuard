@@ -87,6 +87,31 @@ This is a learning MVP, **not production-ready financial software**. The API cur
 
 The Cloudflare deployment workflow runs `node --check worker/index.js` before deploying. Live PayPal and Anthropic integration tests require credentials and are not run by that syntax check.
 
+
+## Optional design workflow (Hallmark)
+
+Hallmark is an optional design skill for compatible AI coding agents. It is not required to run or deploy PayGuard, and installing it does not change the app by itself.
+
+For **Codex CLI** (Node.js 18+ and npm required), install the skill globally:
+
+```bash
+npx skills add nutlope/hallmark -g --agent codex
+```
+
+Then, from the project directory, ask the agent to review the existing app before making changes. For example:
+
+```text
+$hallmark redesign ./public
+```
+
+For a static-page audit:
+
+```bash
+$hallmark audit ./public/index.html
+```
+
+Keep PayGuard's existing form IDs, input names, API endpoints, script loading, and Sandbox safety notices intact when redesigning. Review the diff and run the project checks before deploying. The commands above target Codex CLI; other Codex interfaces may have different skill-installation support.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
