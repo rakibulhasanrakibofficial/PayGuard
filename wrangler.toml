@@ -1,0 +1,8 @@
+name = "payguard-api"
+main = "worker/index.js"
+compatibility_date = "2026-11-07"
+workers_dev = true
+
+[vars]
+PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com"
+ANTHROPIC_MODEL = "claude-sonnet-4-6"
