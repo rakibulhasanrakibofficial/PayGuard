@@ -71,7 +71,7 @@ The free Render service may sleep when idle, so the first request can take longe
 
 ## Tests
 
-Run `npm test`. Tests cover rule-based scam signals and basic input validation. Live PayPal/AI calls require credentials and are not covered by the offline test suite.
+Run `npm test`. The current offline tests cover the rule-based scam detector and its payment-verification disclaimer. Live PayPal/AI calls require credentials and are not covered by the offline test suite.
 
 ## Important limitations
 
