@@ -23,8 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Configure API origin
         env:
           PAYGUARD_API_BASE: ${{ secrets.PAYGUARD_API_BASE }}
