@@ -1,0 +1,23 @@
+{
+  "name": "payguard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-assisted invoicing and payment scam protection for freelancers",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "morgan": "^1.10.0",
+    "express-rate-limit": "^7.5.0"
+  },
+  "devDependencies": {}
+}
