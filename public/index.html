@@ -1,8 +1,93 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="PayGuard helps freelancers assess payment scam risks and create PayPal Sandbox invoices."><title>PayGuard — Payment Safety</title><link rel="stylesheet" href="styles.css"><script src="config.js" defer></script><script src="app.js" defer></script></head>
-<body><header class="top"><a class="brand" href="./">◈ PayGuard</a><span class="sandbox">PAYPAL SANDBOX</span></header><main>
-<section class="hero"><p class="eyebrow">FREELANCE PAYMENT SAFETY</p><h1>Get paid with<br><em>confidence.</em></h1><p>Invoices, scam signals and payment checks in one workspace.</p><div class="hero-actions"><a class="button" href="#invoice">Create invoice</a><a class="button secondary" href="#shield">Check a message</a></div></section>
-<section class="grid"><article class="panel" id="invoice"><p class="eyebrow">01 / INVOICING</p><h2>Create a PayPal invoice</h2><p class="muted">Creates and sends a test invoice using your PayPal Sandbox credentials.</p><form id="invoice-form"><label>Client name<input name="recipientName" maxlength="80" placeholder="Client name"></label><label>Client email<input name="recipientEmail" type="email" required placeholder="client@example.com"></label><label>Work description<input name="description" maxlength="120" required placeholder="Website design"></label><div class="row"><label>Amount<input name="amount" type="number" min="0.01" max="100000" step="0.01" required placeholder="100.00"></label><label>Currency<select name="currency"><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></select></label></div><button class="button" type="submit">Create & send invoice</button></form><div id="invoice-result" class="result" aria-live="polite"></div></article>
-<article class="panel" id="shield"><p class="eyebrow">02 / AI SCAM SHIELD</p><h2>Analyze a message</h2><p class="muted">Look for overpayment tricks, fake proof, pressure and suspicious fees.</p><form id="scam-form"><label>Paste message<textarea name="message" rows="8" maxlength="8000" required placeholder="I accidentally paid twice. Please refund the extra amount immediately..."></textarea></label><button class="button" type="submit">Analyze risk</button></form><div id="scam-result" class="result" aria-live="polite"></div></article>
-<article class="panel wide" id="verify"><p class="eyebrow">03 / PAYMENT VERIFICATION</p><h2>Verify a PayPal capture</h2><p class="muted">Check a capture ID directly against PayPal Sandbox. A screenshot or email is not proof of payment.</p><form id="verify-form" class="verify-form"><label>Capture ID<input name="captureId" required placeholder="PayPal capture ID"></label><button class="button" type="submit">Verify with PayPal</button></form><div id="verify-result" class="result" aria-live="polite"></div></article></section>
-<section class="notice"><strong>Important:</strong> AI risk analysis never confirms payment. Only PayPal's authenticated API records can verify a PayPal transaction. Sandbox only — no real money moves.</section></main><footer>PayGuard · Open-source demo · MIT License</footer></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PayGuard helps freelancers assess payment scam risks and create PayPal Sandbox invoices.">
+  <meta name="theme-color" content="#f5f2ec">
+  <title>PayGuard — Payment Safety Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="PayGuard home"><span class="brand-mark" aria-hidden="true">P</span><span>payguard</span></a>
+    <div class="topbar-right">
+      <span class="environment"><span class="status-dot" aria-hidden="true"></span> PAYPAL SANDBOX</span>
+      <span class="topbar-caption">PAYMENT SAFETY WORKSPACE</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="page-heading" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">YOUR PAYMENT DESK</p>
+        <h1 id="page-title">Stay sharp. Get paid.</h1>
+        <p class="intro">A practical workspace to invoice clients, inspect suspicious messages and verify payments.</p>
+      </div>
+      <div class="heading-note"><span class="note-icon" aria-hidden="true">↗</span><span>Test environment<br><strong>No real money moves</strong></span></div>
+    </section>
+
+    <nav class="workflow-nav" aria-label="Payment safety tools">
+      <a href="#invoice"><span class="step-number">01</span><span>Invoices</span></a>
+      <a href="#shield"><span class="step-number">02</span><span>Scam check</span></a>
+      <a href="#verify"><span class="step-number">03</span><span>Verification</span></a>
+    </nav>
+
+    <section class="tool-grid" aria-label="PayGuard tools">
+      <article class="tool-card" id="invoice">
+        <div class="card-topline"><span class="eyebrow">01 / INVOICING</span><span class="card-icon" aria-hidden="true">↗</span></div>
+        <h2>Create an invoice</h2>
+        <p class="card-description">Send a PayPal Sandbox invoice to a client. Check the details before submitting.</p>
+        <form id="invoice-form">
+          <label>Client name <span class="optional">OPTIONAL</span><input name="recipientName" maxlength="80" placeholder="e.g. Alex Morgan" autocomplete="name"></label>
+          <label>Client email<input name="recipientEmail" type="email" required placeholder="client@example.com" autocomplete="email"></label>
+          <label>Work description<input name="description" maxlength="120" required placeholder="e.g. Website design"></label>
+          <div class="form-row">
+            <label>Amount<input name="amount" type="number" min="0.01" max="100000" step="0.01" required placeholder="100.00" inputmode="decimal"></label>
+            <label>Currency<select name="currency"><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></select></label>
+          </div>
+          <button class="button button-primary" type="submit"><span>Create &amp; send invoice</span><span aria-hidden="true">→</span></button>
+        </form>
+        <div id="invoice-result" class="result" aria-live="polite" aria-atomic="true"></div>
+      </article>
+
+      <article class="tool-card scam-card" id="shield">
+        <div class="card-topline"><span class="eyebrow">02 / AI SCAM SHIELD</span><span class="card-icon shield-icon" aria-hidden="true">⌁</span></div>
+        <h2>Check a message</h2>
+        <p class="card-description">Spot pressure tactics, overpayment tricks, fake proof and suspicious fees before you respond.</p>
+        <form id="scam-form">
+          <label>Message to inspect<textarea name="message" rows="8" maxlength="8000" required placeholder="Paste the client message here…"></textarea></label>
+          <p class="field-hint">Remove passwords, verification codes and private information before pasting.</p>
+          <button class="button button-primary" type="submit"><span>Analyze risk</span><span aria-hidden="true">→</span></button>
+        </form>
+        <div id="scam-result" class="result" aria-live="polite" aria-atomic="true"></div>
+      </article>
+
+      <article class="tool-card verification-card" id="verify">
+        <div class="card-topline"><span class="eyebrow">03 / PAYMENT VERIFICATION</span><span class="card-icon verify-icon" aria-hidden="true">✓</span></div>
+        <div class="verification-copy">
+          <h2>Verify a payment</h2>
+          <p class="card-description">Check a capture ID against PayPal Sandbox records. A screenshot or forwarded email is not proof of payment.</p>
+        </div>
+        <form id="verify-form" class="verify-form">
+          <label>PayPal capture ID<input name="captureId" required placeholder="Paste capture ID" autocomplete="off"></label>
+          <button class="button button-primary" type="submit"><span>Verify with PayPal</span><span aria-hidden="true">→</span></button>
+        </form>
+        <div id="verify-result" class="result" aria-live="polite" aria-atomic="true"></div>
+      </article>
+    </section>
+
+    <aside class="trust-note" aria-label="Important payment safety information">
+      <span class="trust-symbol" aria-hidden="true">i</span>
+      <p><strong>Know what the result means.</strong> AI risk analysis can flag suspicious language, but it cannot confirm a payment. Only authenticated PayPal API records can verify a PayPal transaction. This demo uses Sandbox only.</p>
+    </aside>
+  </main>
+
+  <footer><span>PAYGUARD</span><span>Open-source demo · MIT License</span></footer>
+</body>
+</html>
