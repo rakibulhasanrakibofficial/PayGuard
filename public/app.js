@@ -1,5 +1,5 @@
 const $ = (s) => document.querySelector(s);
-const API_BASE = String(window.PAYGUARD_API_BASE || "").replace(/\\/$/, "");
+const API_BASE = String(window.PAYGUARD_API_BASE || "").replace(/\/$/, "");
 async function request(url, options) {
   const response = await fetch(`${API_BASE}${url}`, options);
   const data = await response.json().catch(() => ({}));
