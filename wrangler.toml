@@ -6,3 +6,4 @@ workers_dev = true
 [vars]
 PAYPAL_BASE_URL = "https://api-m.sandbox.paypal.com"
 ANTHROPIC_MODEL = "claude-sonnet-4-6"
+PAYGUARD_REQUIRE_ACCESS_KEY = "true"
