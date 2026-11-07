@@ -520,3 +520,44 @@ body:has(#access-gate:not([hidden])) footer{visibility:hidden!important}
 #access-gate .auth-submit{
   box-shadow:8px 8px 16px rgba(170,185,199,.5),-8px -8px 16px rgba(255,255,255,.92)!important;
 }
+
+
+/* Global subtle blue-grey palette refresh — colors only, no layout changes */
+:root{
+  --paper:#e8eef5;
+  --surface:#e8eef5;
+  --surface-soft:#e4ebf3;
+  --ink:#29384b;
+  --muted:#78899c;
+  --line:#d5e0eb;
+  --line-strong:#cbd8e5;
+  --coral:#168fcf;
+  --coral-dark:#0879b7;
+  --coral-soft:#dcebf5;
+  background:#e8eef5!important;
+}
+html,body{background:#e8eef5!important;color:#29384b}
+.topbar{background:rgba(232,238,245,.96)!important}
+.workspace{background:transparent!important}
+.hero-panel,.workflow-nav,.tool-card,.dashboard-card,.access-panel,
+.auth-card,#access-gate.access-gate:not([hidden]){
+  background-color:#e8eef5!important;
+}
+.tool-card:before,.hero-panel:after{opacity:.35}
+input,select,textarea,.auth-input-group input,
+#access-gate .auth-input-group:after{
+  background-color:#e5edf5!important;
+}
+.auth-bg-circle,.auth-logo,.auth-submit,.auth-password-toggle,
+.brand-mark,.environment,.button-secondary,.mini-button,
+.proof-icon,.card-icon,.badge,.reminder-form,.trust-note,.trust-symbol{
+  background-color:#e8eef5!important;
+}
+.auth-card,#access-gate .auth-card,.hero-panel,.tool-card,.dashboard-card,
+.workflow-nav,.auth-logo,.auth-submit,.brand-mark,.card-icon,.proof-icon{
+  box-shadow:9px 9px 20px rgba(177,190,205,.48),-9px -9px 20px rgba(255,255,255,.78)!important;
+}
+input,select,textarea,.auth-input-group input,.reminder-form{
+  box-shadow:inset 5px 5px 10px rgba(177,190,205,.42),inset -5px -5px 10px rgba(255,255,255,.8)!important;
+}
+#access-gate .auth-input-group input{background:#e5edf5!important}
