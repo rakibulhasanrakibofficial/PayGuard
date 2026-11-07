@@ -1,4 +1,5 @@
 import { ruleBasedAnalysis, extractClaims, applyVerification, normalizeInvoice, isPaid, parseJobText, reminderTemplate } from "./lib.js";
+import { verifySupabaseUser, saveInvoiceOwner, ownsInvoice, listOwnedInvoiceIds, addUserActivity, getUserActivity } from "./supabase.js";
 
 const FRONTEND_ORIGIN = "https://rakibulhasanrakibofficial.github.io";
 const CURRENCIES = new Set(["USD", "EUR", "GBP", "CAD", "AUD"]);
@@ -267,18 +268,15 @@ export default {
     try {
       const isHealth = request.method === "GET" && path === "/api/health";
       const isWebhook = request.method === "POST" && path === "/api/paypal/webhook";
-      const accessKey = typeof env.PAYGUARD_ACCESS_KEY === "string" ? env.PAYGUARD_ACCESS_KEY : "";
-      const accessRequired = env.PAYGUARD_REQUIRE_ACCESS_KEY === "true" || accessKey.length > 0;
+      let user = null;
       if (!isHealth && !isWebhook) {
-        // Throttle before checking credentials so invalid-key attempts are throttled too.
         enforceRateLimit(request, path);
-        if (accessRequired && accessKey.length < 32) fail("API access is not configured safely. Set PAYGUARD_ACCESS_KEY to a random value of at least 32 characters.", 503);
-        if (accessRequired && !(await accessKeyMatches(accessKey, request.headers.get("X-PayGuard-Access-Key")))) fail("Workspace access key is missing or invalid.", 401);
+        user = await verifySupabaseUser(request, env);
       }
       if (isHealth) {
-        return reply({ ok: true, service: "PayGuard", environment: "SANDBOX", paypalConfigured: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET), ai: env.ANTHROPIC_API_KEY ? "claude" : "rules-only", storage: env.PAYGUARD_KV ? "kv" : "memory", webhookVerification: !!env.PAYPAL_WEBHOOK_ID, accessKeyRequired: accessRequired, publicApiWarning: !accessRequired });
+        return reply({ ok: true, service: "PayGuard", environment: "SANDBOX", paypalConfigured: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET), ai: env.ANTHROPIC_API_KEY ? "claude" : "rules-only", storage: env.PAYGUARD_KV ? "kv" : "memory", auth: "supabase", webhookVerification: !!env.PAYPAL_WEBHOOK_ID, authenticationRequired: true });
       }
-      if (request.method === "GET" && path === "/api/activity") return reply({ activity: await getActivity(env) });
+      if (request.method === "GET" && path === "/api/activity") return reply({ activity: await getUserActivity(env, user) });
 
       // AI: plain-language request -> invoice draft (nothing is sent to PayPal here)
       if (request.method === "POST" && path === "/api/invoices/draft") {
@@ -287,15 +285,21 @@ export default {
         if (text.length < 8 || text.length > 1000) fail("Describe the job in 8 to 1,000 characters.", 400);
         return reply(await draftInvoiceFromText(text, env));
       }
-      if (request.method === "GET" && path === "/api/invoices") return reply({ invoices: await listInvoices(env) });
+      if (request.method === "GET" && path === "/api/invoices") {
+        const ownedIds = new Set(await listOwnedInvoiceIds(env, user));
+        const invoices = await listInvoices(env);
+        return reply({ invoices: invoices.filter(invoice => ownedIds.has(invoice.id)) });
+      }
       if (request.method === "POST" && path === "/api/invoices") {
         const result = await createInvoice(await bodyJson(request), env);
-        await addActivity(env, "invoice", `Invoice ${result.invoiceNumber} sent`);
+        await saveInvoiceOwner(env, user, result.invoiceId, result.invoiceNumber);
+        await addUserActivity(env, user, "invoice", `Invoice ${result.invoiceNumber} sent`);
         return reply(result, 201);
       }
       let r = m(/^\/api\/invoices\/([^/]+)\/(verify|remind-draft|remind|sandbox-pay)$/);
       if (r) {
         const [, id, action] = r;
+        if (!(await ownsInvoice(env, user, id))) fail("Invoice not found in your account.", 404);
         if (action === "verify" && request.method === "GET") {
           const inv = await getInvoice(id, env);
           const verified = isPaid(inv);
@@ -306,7 +310,7 @@ export default {
           const input = await bodyJson(request);
           if (!input.subject || !input.note) fail("Reminder needs a subject and a message.", 400);
           await paypalRequest(`/v2/invoicing/invoices/${invoiceIdFrom(id)}/remind`, env, { method: "POST", body: JSON.stringify({ subject: String(input.subject).slice(0, 100), note: String(input.note).slice(0, 900), send_to_recipient: true, send_to_invoicer: false }) });
-          await addActivity(env, "reminder", `Reminder sent for ${id}`);
+          await addUserActivity(env, user, "reminder", `Reminder sent for ${id}`);
           return reply({ ok: true });
         }
         if (action === "sandbox-pay" && request.method === "POST") {
@@ -314,7 +318,7 @@ export default {
           const inv = await getInvoice(id, env);
           if (inv.due <= 0) fail("This invoice has nothing left to pay.", 400);
           await paypalRequest(`/v2/invoicing/invoices/${invoiceIdFrom(id)}/payments`, env, { method: "POST", body: JSON.stringify({ method: "OTHER", note: "Simulated Sandbox payment from PayGuard demo", payment_date: new Date().toISOString().slice(0, 10), amount: { currency_code: inv.currency, value: inv.due.toFixed(2) } }) });
-          await addActivity(env, "payment", `Sandbox payment recorded on ${inv.number}`);
+          await addUserActivity(env, user, "payment", `Sandbox payment recorded on ${inv.number}`);
           return reply({ invoice: await getInvoice(id, env) });
         }
       }
@@ -327,18 +331,24 @@ export default {
         const analysis = await analyzeMessage(message, env);
         const claims = extractClaims(message);
         let invoice = null;
-        if (input.invoiceId) invoice = await getInvoice(String(input.invoiceId), env);
+        if (input.invoiceId) {
+          const invoiceId = String(input.invoiceId);
+          if (!(await ownsInvoice(env, user, invoiceId))) fail("Invoice not found in your account.", 404);
+          invoice = await getInvoice(invoiceId, env);
+        }
         else if (claims.invoiceRef && env.PAYPAL_CLIENT_ID) {
           const ref = claims.invoiceRef.toLowerCase();
-          invoice = (await listInvoices(env).catch(() => [])).find((i) => ref.includes(String(i.number).toLowerCase())) || null;
+          const ownedIds = new Set(await listOwnedInvoiceIds(env, user));
+          invoice = (await listInvoices(env).catch(() => [])).find((i) => ownedIds.has(i.id) && ref.includes(String(i.number).toLowerCase())) || null;
         }
         const result = applyVerification(analysis, claims, invoice);
-        await addActivity(env, "scam", `Scam check: ${result.riskLevel}${result.verification?.result ? " (" + result.verification.result + ")" : ""}`);
+        await addUserActivity(env, user, "scam", `Scam check: ${result.riskLevel}${result.verification?.result ? " (" + result.verification.result + ")" : ""}`);
         return reply(result);
       }
 
       r = m(/^\/api\/payments\/capture\/([A-Za-z0-9_-]{5,100})$/);
       if (request.method === "GET" && r) {
+        fail("Capture lookup is disabled until capture ownership can be verified.", 403);
         const capture = await paypalRequest(`/v2/payments/captures/${encodeURIComponent(r[1])}`, env, { method: "GET" });
         return reply({ verified: true, captureId: capture.id, status: capture.status, amount: capture.amount, createTime: capture.create_time, updateTime: capture.update_time, source: "PayPal API", environment: "SANDBOX" });
       }
