@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import app from "../src/app.js";
+import worker from "../worker/index.js";
 
 // Boots the Express adapter + Worker handler with no secrets: validation and rule-based paths only.
 let server, base;
@@ -30,4 +31,54 @@ test("rejects bad invoice input and invalid ids", async () => {
 test("foreign origins are blocked", async () => {
   const r = await fetch(base + "/api/health", { headers: { Origin: "https://evil.example" } });
   assert.equal(r.status, 403);
+});
+
+
+test("Worker fails closed when access is required but the secret is missing", async () => {
+  const response = await worker.fetch(new Request("https://payguard.test/api/scam/analyze", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ message: "I overpaid you, refund the difference urgently" })
+  }), { PAYGUARD_REQUIRE_ACCESS_KEY: "true" });
+  assert.equal(response.status, 503);
+});
+
+test("Worker rejects missing and incorrect workspace keys", async () => {
+  const env = { PAYGUARD_REQUIRE_ACCESS_KEY: "true", PAYGUARD_ACCESS_KEY: "a".repeat(40) };
+  const makeRequest = () => new Request("https://payguard.test/api/scam/analyze", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ message: "I overpaid you, refund the difference urgently" })
+  });
+  assert.equal((await worker.fetch(makeRequest(), env)).status, 401);
+  const wrong = makeRequest();
+  wrong.headers.set("X-PayGuard-Access-Key", "b".repeat(40));
+  assert.equal((await worker.fetch(wrong, env)).status, 401);
+});
+
+test("Worker accepts a valid workspace key and keeps health public", async () => {
+  const secret = "c".repeat(40);
+  const env = { PAYGUARD_REQUIRE_ACCESS_KEY: "true", PAYGUARD_ACCESS_KEY: secret };
+  const health = await worker.fetch(new Request("https://payguard.test/api/health"), env);
+  assert.equal(health.status, 200);
+  assert.equal((await health.json()).accessKeyRequired, true);
+  const response = await worker.fetch(new Request("https://payguard.test/api/scam/analyze", {
+    method: "POST",
+    headers: { "content-type": "application/json", "X-PayGuard-Access-Key": secret, "CF-Connecting-IP": "198.51.100.40" },
+    body: JSON.stringify({ message: "I overpaid you, refund the difference urgently" })
+  }), env);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).riskLevel, "HIGH");
+});
+
+
+test("Worker CORS preflight allows the workspace access header", async () => {
+  const response = await worker.fetch(new Request("https://payguard.test/api/activity", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://rakibulhasanrakibofficial.github.io",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "x-payguard-access-key"
+    }
+  }), {});
+  assert.equal(response.status, 204);
+  assert.match(response.headers.get("Access-Control-Allow-Headers"), /X-PayGuard-Access-Key/i);
 });

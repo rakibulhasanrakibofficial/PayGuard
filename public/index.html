@@ -22,7 +22,21 @@
     </div>
   </header>
 
-  <main class="workspace">
+  <section id="access-gate" class="access-gate" hidden aria-labelledby="access-title">
+    <div class="access-panel">
+      <p class="eyebrow">PRIVATE DEMO WORKSPACE</p>
+      <h1 id="access-title">Enter your access key</h1>
+      <p>Enter the shared demo key provided by the workspace owner. It is kept in this browser tab only.</p>
+      <form id="access-form">
+        <label for="access-key">Workspace access key</label>
+        <input id="access-key" name="accessKey" type="password" minlength="32" maxlength="256" autocomplete="off" required placeholder="Paste your workspace key">
+        <button class="button button-primary" type="submit">Unlock workspace <span aria-hidden="true">→</span></button>
+        <p id="access-note" class="field-hint" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+  <main class="workspace" id="workspace-content">
     <section class="page-heading" aria-labelledby="page-title">
       <div>
         <p class="eyebrow">YOUR PAYMENT DESK</p>
