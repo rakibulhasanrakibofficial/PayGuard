@@ -166,4 +166,14 @@ $("#access-form").addEventListener("submit", async e => {
     $("#access-note").textContent = err.message;
   } finally { button.disabled = false; }
 });
+
+const accessToggle = $("#access-key-toggle");
+if (accessToggle) accessToggle.addEventListener("click", () => {
+  const input = $("#access-key");
+  const reveal = input.type === "password";
+  input.type = reveal ? "text" : "password";
+  accessToggle.setAttribute("aria-label", reveal ? "Hide access key" : "Show access key");
+  accessToggle.textContent = reveal ? "◎" : "◉";
+});
+
 initializeWorkspace();
