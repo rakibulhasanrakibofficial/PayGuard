@@ -68,3 +68,17 @@ test("Worker accepts a valid workspace key and keeps health public", async () =>
   assert.equal(response.status, 200);
   assert.equal((await response.json()).riskLevel, "HIGH");
 });
+
+
+test("Worker CORS preflight allows the workspace access header", async () => {
+  const response = await worker.fetch(new Request("https://payguard.test/api/activity", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://rakibulhasanrakibofficial.github.io",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "x-payguard-access-key"
+    }
+  }), {});
+  assert.equal(response.status, 204);
+  assert.match(response.headers.get("Access-Control-Allow-Headers"), /X-PayGuard-Access-Key/i);
+});
