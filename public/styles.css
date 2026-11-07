@@ -639,3 +639,39 @@ input,select,textarea,.auth-input-group input,.reminder-form{
 }
 #access-gate .auth-input-group input{background:#e5e0ef!important}
 #access-gate .auth-bg-circle{background:#edeaf5!important}
+
+
+/* Subtle floating side accents for ambient depth */
+body::before,body::after{
+  content:"";position:fixed;z-index:0;pointer-events:none;border-radius:50%;
+  background:linear-gradient(145deg,rgba(255,255,255,.58),rgba(216,207,237,.32));
+  box-shadow:12px 12px 26px rgba(181,174,199,.25),-10px -10px 24px rgba(255,255,255,.62);
+  opacity:.72;will-change:transform;
+}
+body::before{
+  width:clamp(76px,10vw,150px);height:clamp(76px,10vw,150px);
+  left:clamp(-48px,3vw,42px);top:22%;
+  animation:sideOrbFloatA 9s ease-in-out infinite;
+}
+body::after{
+  width:clamp(54px,7vw,108px);height:clamp(54px,7vw,108px);
+  right:clamp(-28px,5vw,68px);bottom:16%;
+  animation:sideOrbFloatB 11s ease-in-out infinite;
+}
+.topbar,.workspace,footer{position:relative;z-index:1}
+#access-gate.access-gate:not([hidden]){z-index:30}
+@keyframes sideOrbFloatA{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(12px,-24px,0) scale(1.045)}
+}
+@keyframes sideOrbFloatB{
+  0%,100%{transform:translate3d(0,0,0) scale(1)}
+  50%{transform:translate3d(-14px,20px,0) scale(.96)}
+}
+@media(max-width:760px){
+ body::before{left:-42px;top:17%;opacity:.48}
+ body::after{right:-28px;bottom:12%;opacity:.42}
+}
+@media(prefers-reduced-motion:reduce){
+ body::before,body::after{animation:none!important}
+}
