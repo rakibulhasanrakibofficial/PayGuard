@@ -68,7 +68,7 @@
     <nav class="workflow-nav" aria-label="Payment safety tools">
       <a href="#invoice"><span class="step-number">01</span><span>Invoices</span></a>
       <a href="#shield"><span class="step-number">02</span><span>Scam check</span></a>
-      <a href="#verify"><span class="step-number">03</span><span>Verification</span></a>
+      <a href="#invoices"><span class="step-number">03</span><span>Payment checks</span></a>
       <a href="#invoices"><span class="step-number">04</span><span>Dashboard</span></a>
     </nav>
 
@@ -109,17 +109,14 @@
         <div id="scam-result" class="result" aria-live="polite" aria-atomic="true"></div>
       </article>
 
-      <article class="tool-card verification-card" id="verify">
+      <article class="tool-card verification-card" aria-labelledby="verify-title">
         <div class="card-topline"><span class="eyebrow">03 / PAYMENT VERIFICATION</span><span class="card-icon verify-icon" aria-hidden="true">✓</span></div>
         <div class="verification-copy">
-          <h2>Verify a payment</h2>
-          <p class="card-description">Check a capture ID against PayPal Sandbox records. A screenshot or forwarded email is not proof of payment.</p>
+          <h2 id="verify-title">Verify safely</h2>
+          <p class="card-description">Never trust a screenshot, email, or a capture ID pasted by a client. Verify only an invoice that appears in your own dashboard.</p>
+          <a class="button button-secondary" href="#invoices">Go to your invoices <span aria-hidden="true">→</span></a>
         </div>
-        <form id="verify-form" class="verify-form">
-          <label>PayPal capture ID<input name="captureId" required placeholder="Paste capture ID" autocomplete="off"></label>
-          <button class="button button-primary" type="submit"><span>Verify with PayPal</span><span aria-hidden="true">→</span></button>
-        </form>
-        <div id="verify-result" class="result" aria-live="polite" aria-atomic="true"></div>
+        <p class="field-hint">Use the <strong>Verify</strong> action beside an invoice. PayGuard checks its status directly with PayPal Sandbox.</p>
       </article>
     </section>
 
@@ -127,7 +124,7 @@
       <div class="card-topline"><span class="eyebrow">04 / DASHBOARD</span><button id="refresh-invoices" class="mini-button" type="button">Refresh</button></div>
       <h2 id="dash-title">Your invoices</h2>
       <p class="card-description">Live from PayPal Sandbox. Statuses refresh every 20 seconds. “Verify” asks PayPal directly; it never trusts the browser or a screenshot.</p>
-      <div class="table-wrap"><table class="invoice-table"><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <div class="invoice-tools"><label class="sr-only" for="invoice-search">Search invoices</label><input id="invoice-search" type="search" placeholder="Search invoice or client…" autocomplete="off"><label class="sr-only" for="invoice-status-filter">Filter by status</label><select id="invoice-status-filter"><option value="all">All statuses</option><option value="open">Awaiting payment</option><option value="paid">Paid</option><option value="overdue">Overdue</option><option value="cancelled">Cancelled</option></select></div><div class="table-wrap"><table class="invoice-table"><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
         <tbody id="invoice-rows"><tr><td colspan="7" class="empty-cell">Loading invoices from PayPal…</td></tr></tbody></table></div>
       <div id="invoice-note" class="result" aria-live="polite" aria-atomic="true"></div>
       <form id="reminder-form" class="reminder-form" hidden>
