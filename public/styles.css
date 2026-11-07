@@ -288,3 +288,47 @@ footer{border-color:#dce1e9;color:#98a2b3}footer span:first-child{color:#475467}
 }
 @media(max-width:430px){.hero-actions{align-items:flex-start;flex-direction:column;gap:14px}.tool-card{padding:19px}}
 @media(prefers-reduced-motion:reduce){.hero-panel:before,.hero-orbit,.hero-shield,.tool-card{animation:none!important}}
+
+
+/* V4 — dimensional fintech interface */
+:root{--depth-blue:#142fbd;--lime:#d7f36a;--ink:#111a2b}
+html{perspective:1400px}
+body{background:linear-gradient(135deg,#f5f6fa 0%,#edf0f6 52%,#e8edf7 100%);background-attachment:fixed}
+.topbar{box-shadow:0 4px 18px rgba(25,42,85,.035)}
+.brand-mark{position:relative;transform:rotate(-8deg);box-shadow:5px 5px 0 #c9d4ff,10px 10px 0 rgba(36,75,232,.09)}
+.hero-panel{perspective:1000px;transform-style:preserve-3d;box-shadow:0 22px 0 -12px #d9e0f4,0 36px 70px rgba(29,54,140,.2);transition:transform .35s ease,box-shadow .35s ease}
+.hero-panel:hover{transform:translateY(-4px) rotateX(.5deg);box-shadow:0 26px 0 -12px #d9e0f4,0 46px 80px rgba(29,54,140,.23)}
+.hero-panel:after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(115deg,transparent 0 46%,rgba(255,255,255,.07) 47%,transparent 66%);transform:translateZ(3px)}
+.hero-copy,.hero-aside,.hero-proof{transform:translateZ(24px)}
+.hero-aside{perspective:800px;transform-style:preserve-3d}
+.hero-orbit{box-shadow:0 0 24px rgba(210,245,100,.12);transform-style:preserve-3d}
+.orbit-one{transform:rotateX(62deg) rotateZ(-24deg);width:235px;height:170px}
+.orbit-two{transform:rotateX(62deg) rotateZ(55deg);width:290px;height:205px}
+.hero-shield{position:relative;z-index:2;transform:translateZ(55px) rotateY(-14deg) rotateX(8deg);box-shadow:12px 16px 0 rgba(10,34,125,.22),22px 27px 35px rgba(4,23,100,.24);border:1px solid rgba(255,255,255,.55)}
+.hero-shield:after{content:"";position:absolute;inset:8px;border:1px solid rgba(36,75,232,.2);clip-path:inherit}
+.hero-status{transform:translateZ(36px) rotateY(-5deg);box-shadow:0 12px 24px rgba(7,23,93,.2)}
+.hero-footnote{transform:translateZ(16px)}
+.hero-proof>div{transition:background .22s ease,transform .22s ease}
+.hero-proof>div:hover{background:rgba(255,255,255,.08);transform:translateY(-3px)}
+.workflow-nav{box-shadow:0 8px 24px rgba(23,43,91,.045)}
+.tool-grid{perspective:1200px;perspective-origin:50% 0}
+.tool-card{position:relative;isolation:isolate;transform-style:preserve-3d;box-shadow:0 1px 0 #fff inset,0 7px 0 -3px #e0e5f0,0 18px 32px rgba(25,43,85,.075);transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s,border-color .28s}
+.tool-card:before{content:"";position:absolute;inset:0;z-index:-1;border-radius:inherit;pointer-events:none;background:linear-gradient(145deg,rgba(255,255,255,.8),transparent 38%);opacity:.65}
+.tool-card:hover{transform:translateY(-7px) rotateX(1.1deg) rotateY(-.7deg);box-shadow:0 1px 0 #fff inset,0 8px 0 -3px #d8e0f1,0 28px 48px rgba(25,43,85,.13);border-color:#b8c7ff}
+.tool-card>*{transform:translateZ(7px)}
+.tool-card .result,.tool-card .table-wrap,.tool-card .activity{transform:translateZ(2px)}
+.card-icon{box-shadow:3px 3px 0 rgba(36,75,232,.09);transition:transform .22s,box-shadow .22s}
+.tool-card:hover .card-icon{transform:translateY(-2px) rotate(-5deg);box-shadow:5px 5px 0 rgba(36,75,232,.11)}
+.button-primary{position:relative;overflow:hidden;box-shadow:0 4px 0 #172fa4,0 9px 18px rgba(36,75,232,.13);transition:transform .18s,box-shadow .18s,background .18s}
+.button-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 6px 0 #172fa4,0 15px 22px rgba(36,75,232,.18)}
+.button-primary:active:not(:disabled){transform:translateY(2px);box-shadow:0 1px 0 #172fa4}
+.hero-cta{box-shadow:0 4px 0 #8eae22,0 10px 20px rgba(4,22,80,.15)}
+.hero-cta:hover{transform:translateY(-3px);box-shadow:0 7px 0 #8eae22,0 16px 24px rgba(4,22,80,.18)}
+input,select,textarea{box-shadow:0 2px 0 rgba(20,38,85,.025) inset;transition:transform .18s,border-color .18s,box-shadow .18s}
+input:focus-visible,select:focus-visible,textarea:focus-visible{transform:translateY(-1px)}
+.dashboard-card{box-shadow:0 1px 0 #fff inset,0 8px 0 -3px #dfe5f0,0 20px 38px rgba(25,43,85,.07)}
+.trust-note{box-shadow:5px 5px 0 rgba(36,75,232,.055)}
+@keyframes shieldFloat{0%,100%{transform:translateZ(55px) translateY(0) rotateY(-14deg) rotateX(8deg)}50%{transform:translateZ(75px) translateY(-10px) rotateY(10deg) rotateX(-3deg)}}
+@keyframes orbitSpin{from{rotate:0deg}to{rotate:360deg}}
+@media(max-width:760px){.hero-panel{transform:none}.hero-panel:hover{transform:none}.hero-copy,.hero-aside,.hero-proof{transform:none}.hero-orbit{max-width:90vw}.tool-card:hover{transform:translateY(-3px)}.tool-card>*{transform:none}}
+@media(prefers-reduced-motion:reduce){.hero-panel,.tool-card,.hero-shield,.hero-orbit,.button-primary,.hero-cta{transition:none!important;animation:none!important;transform:none!important}}
