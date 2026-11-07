@@ -600,3 +600,42 @@ input,select,textarea,.auth-input-group input,.reminder-form{
 }
 #access-gate .auth-input-group input{background:#e3ede6!important}
 #access-gate .auth-bg-circle{background:#eaf1ec!important}
+
+
+/* Soft lavender palette — colors only; preserve all layout and motion */
+:root{
+  --paper:#edeaf5!important;
+  --surface:#edeaf5!important;
+  --surface-soft:#e7e2f0!important;
+  --ink:#373247!important;
+  --muted:#89839a!important;
+  --line:#ddd7e9!important;
+  --line-strong:#d2cbe1!important;
+  --coral:#8974c6!important;
+  --coral-dark:#715bb0!important;
+  --coral-soft:#e5def2!important;
+  background:#edeaf5!important;
+}
+html,body{background:#edeaf5!important;color:#373247!important}
+.topbar{background:rgba(237,234,245,.96)!important}
+.hero-panel,.workflow-nav,.tool-card,.dashboard-card,.access-panel,
+.auth-card,#access-gate.access-gate:not([hidden]),
+.auth-bg-circle,.auth-logo,.auth-submit,.auth-password-toggle,
+.brand-mark,.environment,.button-secondary,.mini-button,
+.proof-icon,.card-icon,.badge,.reminder-form,.trust-note,.trust-symbol{
+  background-color:#edeaf5!important;
+}
+input,select,textarea,.auth-input-group input,
+#access-gate .auth-input-group:after{
+  background-color:#e5e0ef!important;
+}
+.auth-card,#access-gate .auth-card,.hero-panel,.tool-card,.dashboard-card,
+.workflow-nav,.auth-logo,.auth-submit,.brand-mark,.card-icon,.proof-icon,
+.auth-bg-circle{
+  box-shadow:9px 9px 20px rgba(181,174,199,.52),-9px -9px 20px rgba(255,255,255,.84)!important;
+}
+input,select,textarea,.auth-input-group input,.reminder-form{
+  box-shadow:inset 5px 5px 10px rgba(181,174,199,.46),inset -5px -5px 10px rgba(255,255,255,.86)!important;
+}
+#access-gate .auth-input-group input{background:#e5e0ef!important}
+#access-gate .auth-bg-circle{background:#edeaf5!important}
