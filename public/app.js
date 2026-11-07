@@ -134,7 +134,7 @@ function startWorkspace() {
  $("#access-gate").hidden=true; $("#workspace-content").hidden=false;
  loadInvoices();loadActivity();setInterval(()=>{loadInvoices(true);loadActivity()},20000);
 }
-function showAuth(note=""){workspaceStarted=false;$("#workspace-content").hidden=true;$("#access-gate").hidden=false;$("#access-note").textContent=note}
+function showAuth(note=""){workspaceStarted=false;$("#workspace-content").hidden=true;$("#access-gate").hidden=false;$("#signout-button").hidden=true;$("#access-note").textContent=note}
 function setAuthMode(mode){
  authMode=mode;const signup=mode==="signup";
  $("#access-title").textContent=signup?"Create account":"Welcome back";
@@ -171,6 +171,7 @@ $("#auth-reset").addEventListener("click",async()=>{
  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
  $("#access-note").textContent=error?error.message:"If this email has an account, a reset link has been sent.";
 });
+$("#signout-button").addEventListener("click",async()=>{if(supabase)await supabase.auth.signOut();location.reload()});
 $("#auth-password-toggle").addEventListener("click",()=>{
  const input=$("#auth-password"),reveal=input.type==="password";input.type=reveal?"text":"password";
  $("#auth-password-toggle").setAttribute("aria-label",reveal?"Hide password":"Show password");$("#auth-password-toggle").textContent=reveal?"◎":"◉";
