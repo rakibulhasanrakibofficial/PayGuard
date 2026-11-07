@@ -28,7 +28,7 @@ jobs:
           PAYGUARD_API_BASE: ${{ secrets.PAYGUARD_API_BASE }}
         run: |
           if [ -n "$PAYGUARD_API_BASE" ]; then
-            printf 'window.PAYGUARD_API_BASE = "%s";\\n' "$PAYGUARD_API_BASE" > public/config.js
+            printf 'window.PAYGUARD_API_BASE = "%s";\n' "$PAYGUARD_API_BASE" > public/config.js
           fi
       - uses: actions/upload-pages-artifact@v3
         with:

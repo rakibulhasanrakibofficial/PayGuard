@@ -4,18 +4,43 @@ AI-assisted invoicing and payment scam-risk analysis for freelancers and small b
 
 > **Sandbox demo only:** PayGuard uses PayPal Sandbox. It does not move real money. AI can identify suspicious language but cannot verify payments. Only authenticated PayPal API records can confirm transaction details.
 
+## The problem
+
+Freelancers lose time chasing invoices and lose money to payment scams ("I overpaid, send back the difference", fake payment screenshots). PayGuard handles both, and **PayPal is always the source of truth**.
+
 ## Features
 
-- Create and send invoices through PayPal Invoicing API (Sandbox).
-- Analyze suspicious client messages with optional Anthropic Claude; rule-based fallback works without an AI key.
-- Look up a PayPal capture ID directly against PayPal's API.
-- Verify incoming PayPal webhook signatures.
-- GitHub Pages frontend and Cloudflare Workers API.
-- Server-side secrets; no API credentials in frontend code.
+- **AI invoice drafting:** describe the job in one sentence ("Invoice Rahim (rahim@example.com) for 5 hours of logo design at $20/hr, due in 10 days"). Claude fills the form; you review it; PayPal's Invoicing API creates and sends it. Works without an AI key through a built-in parser.
+- **Invoice dashboard:** live list from PayPal with status (awaiting, overdue, partly paid, paid), refreshed every 20 seconds.
+- **Payment verification:** "Verify" asks PayPal whether an invoice is truly paid. Capture-ID lookup is also included.
+- **Late-payment reminders:** AI writes a polite reminder with the right tone; PayPal delivers it.
+- **Scam check backed by PayPal:** paste a client message. PayGuard flags scam patterns, extracts what the client *claims* (paid X, refund Y), then checks the related invoice in PayPal. "I paid $500, send back $300" against an unpaid invoice becomes **HIGH risk: PAYMENT_NOT_FOUND**. AI can only raise risk, never excuse it.
+- **Webhooks:** signature-verified with PayPal and processed once per event id (idempotent), shown in the activity feed.
+- Server-side secrets only. No API credentials in frontend code.
 
 ## Stack
 
-Static HTML/CSS/JavaScript, Cloudflare Workers, PayPal REST API, optional Anthropic Messages API.
+Static HTML/CSS/JavaScript, one API implementation (`worker/`) that runs on **Cloudflare Workers** and also on **Node/Express** (local and Render), PayPal REST API (Sandbox), optional Anthropic Claude.
+
+## Quick start (any judge, 2 minutes)
+
+```bash
+git clone https://github.com/rakibulhasanrakibofficial/PayGuard.git
+cd PayGuard
+npm install
+cp .env.example .env     # Windows: copy .env.example .env
+# add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET (PayPal Sandbox app); ANTHROPIC_API_KEY is optional
+npm start
+```
+Open http://localhost:3000. Frontend and API run together on one origin.
+
+**Try it end to end**
+1. Create an invoice for 200 USD (type a sentence in "Describe the job", or fill the form).
+2. In "Check a message", select that invoice and paste: `Hi, I sent $500 by mistake. Please send back the $300 difference today.`
+3. PayGuard shows **HIGH risk**: PayPal has no payment on the invoice. Do not refund.
+4. Click **Simulate payment** on the invoice (Sandbox helper) and run the check again to see PayPal's answer change.
+
+`npm test` runs 17 tests (no credentials needed).
 
 ## Local development
 
@@ -73,19 +98,34 @@ The GitHub Pages workflow writes the backend origin into `public/config.js` duri
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/api/health` | Health check |
-| POST | `/api/scam/analyze` | Analyze a message |
+| GET | `/api/health` | Health and configuration status |
+| POST | `/api/invoices/draft` | AI (or rule-based) draft from plain language; nothing is sent |
 | POST | `/api/invoices` | Create and send a Sandbox invoice |
+| GET | `/api/invoices` | List invoices from PayPal |
+| GET | `/api/invoices/:id/verify` | Ask PayPal if an invoice is fully paid |
+| POST | `/api/invoices/:id/remind-draft` | AI-written reminder text |
+| POST | `/api/invoices/:id/remind` | Send the reminder through PayPal |
+| POST | `/api/invoices/:id/sandbox-pay` | Sandbox only: simulate the client paying |
+| POST | `/api/scam/analyze` | Risk analysis, optionally verified against an invoice (`invoiceId`) |
 | GET | `/api/payments/capture/:captureId` | Query a capture from PayPal |
-| POST | `/api/paypal/webhook` | Verify webhook signature |
+| POST | `/api/paypal/webhook` | Verify signature, process each event once |
+| GET | `/api/activity` | Recent events |
+
+## Deploy on Render (Node, one service)
+
+`render.yaml` is included. In Render choose **New, Blueprint**, select this repo and set `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` (and optionally `ANTHROPIC_API_KEY`, `PAYPAL_WEBHOOK_ID`). Point your PayPal Sandbox webhook to `https://<your-app>.onrender.com/api/paypal/webhook` with the events `INVOICING.INVOICE.PAID`, `INVOICING.INVOICE.UPDATED` and `INVOICING.INVOICE.CANCELLED`.
+
+## Persistence
+
+Activity and webhook de-duplication use Cloudflare KV when a namespace named `PAYGUARD_KV` is bound (add `[[kv_namespaces]]` in `wrangler.toml`). Without it they live in memory, which is fine for a demo but resets on restart. Invoices themselves always live in PayPal.
 
 ## Important limitations
 
-This is a learning MVP, **not production-ready financial software**. The API currently has no user authentication or invoice ownership controls. Its CORS allowlist is not authentication: non-browser clients can still call public endpoints. Use only a dedicated PayPal Sandbox account and synthetic data. Add Cloudflare rate limiting/WAF rules before sharing the public demo. Webhook signatures are verified, but event IDs are not persisted or deduplicated and no webhook side effects are executed. Before real users or real transactions, add authentication/authorization, ownership checks, persistent audit records, full checkout/order reconciliation, privacy and retention controls, monitoring, and an independent security review. Never treat screenshots, forwarded emails, or AI conclusions as proof of payment.
+This is a learning MVP, **not production-ready financial software**. There is no user authentication or invoice ownership: one PayPal Sandbox merchant per deployment, and anyone who can reach the API can list that merchant's sandbox invoices. CORS is not authentication. Use only a dedicated PayPal Sandbox account and synthetic data, and add Cloudflare rate limiting/WAF rules before sharing a public demo. Webhooks are signature-verified and de-duplicated, but their only side effect is the activity feed; invoice state is always read live from PayPal. "Simulate payment" exists only for demos. Before real users or money, add authentication, ownership checks, persistent audit records, full checkout reconciliation, privacy controls and a security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
 
 ## Tests
 
-The Cloudflare deployment workflow runs `node --check worker/index.js` before deploying. Live PayPal and Anthropic integration tests require credentials and are not run by that syntax check.
+`npm test` runs unit tests for the verification logic (claim extraction, PayPal-vs-message verdicts, invoice parsing) and API tests against the Express adapter. The Cloudflare workflow also runs `node --check` before deploying. Live PayPal and Anthropic calls need credentials and are not covered by automated tests.
 
 
 ## Optional design workflow (Hallmark)

@@ -36,6 +36,7 @@
       <a href="#invoice"><span class="step-number">01</span><span>Invoices</span></a>
       <a href="#shield"><span class="step-number">02</span><span>Scam check</span></a>
       <a href="#verify"><span class="step-number">03</span><span>Verification</span></a>
+      <a href="#invoices"><span class="step-number">04</span><span>Dashboard</span></a>
     </nav>
 
     <section class="tool-grid" aria-label="PayGuard tools">
@@ -43,6 +44,11 @@
         <div class="card-topline"><span class="eyebrow">01 / INVOICING</span><span class="card-icon" aria-hidden="true">↗</span></div>
         <h2>Create an invoice</h2>
         <p class="card-description">Send a PayPal Sandbox invoice to a client. Check the details before submitting.</p>
+        <form id="draft-form" class="draft-form">
+          <label>Describe the job <span class="optional">AI DRAFT</span><textarea name="message" rows="3" maxlength="1000" placeholder="Invoice Rahim Uddin (rahim@example.com) for 5 hours of logo design at $20/hr, due in 10 days"></textarea></label>
+          <button class="button button-secondary" type="submit"><span>Fill the form for me</span><span aria-hidden="true">→</span></button>
+          <p id="draft-note" class="field-hint" aria-live="polite"></p>
+        </form>
         <form id="invoice-form">
           <label>Client name <span class="optional">OPTIONAL</span><input name="recipientName" maxlength="80" placeholder="e.g. Alex Morgan" autocomplete="name"></label>
           <label>Client email<input name="recipientEmail" type="email" required placeholder="client@example.com" autocomplete="email"></label>
@@ -51,6 +57,7 @@
             <label>Amount<input name="amount" type="number" min="0.01" max="100000" step="0.01" required placeholder="100.00" inputmode="decimal"></label>
             <label>Currency<select name="currency"><option>USD</option><option>EUR</option><option>GBP</option><option>CAD</option><option>AUD</option></select></label>
           </div>
+          <label>Due in (days)<input name="dueDays" type="number" min="1" max="90" value="7" inputmode="numeric"></label>
           <button class="button button-primary" type="submit"><span>Create &amp; send invoice</span><span aria-hidden="true">→</span></button>
         </form>
         <div id="invoice-result" class="result" aria-live="polite" aria-atomic="true"></div>
@@ -61,6 +68,7 @@
         <h2>Check a message</h2>
         <p class="card-description">Spot pressure tactics, overpayment tricks, fake proof and suspicious fees before you respond.</p>
         <form id="scam-form">
+          <label>Related invoice <span class="optional">OPTIONAL</span><select id="scam-invoice" name="invoiceId"><option value="">None, or detect from the message</option></select></label>
           <label>Message to inspect<textarea name="message" rows="8" maxlength="8000" required placeholder="Paste the client message here…"></textarea></label>
           <p class="field-hint">Remove passwords, verification codes and private information before pasting.</p>
           <button class="button button-primary" type="submit"><span>Analyze risk</span><span aria-hidden="true">→</span></button>
@@ -80,6 +88,23 @@
         </form>
         <div id="verify-result" class="result" aria-live="polite" aria-atomic="true"></div>
       </article>
+    </section>
+
+    <section class="tool-card dashboard-card" id="invoices" aria-labelledby="dash-title">
+      <div class="card-topline"><span class="eyebrow">04 / DASHBOARD</span><button id="refresh-invoices" class="mini-button" type="button">Refresh</button></div>
+      <h2 id="dash-title">Your invoices</h2>
+      <p class="card-description">Live from PayPal Sandbox. Statuses refresh every 20 seconds. “Verify” asks PayPal directly; it never trusts the browser or a screenshot.</p>
+      <div class="table-wrap"><table class="invoice-table"><thead><tr><th>Invoice</th><th>Client</th><th>Total</th><th>Paid</th><th>Due</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody id="invoice-rows"><tr><td colspan="7" class="empty-cell">Loading invoices from PayPal…</td></tr></tbody></table></div>
+      <div id="invoice-note" class="result" aria-live="polite" aria-atomic="true"></div>
+      <form id="reminder-form" class="reminder-form" hidden>
+        <h3 id="reminder-title">Reminder</h3>
+        <label>Subject<input name="subject" maxlength="100" required></label>
+        <label>Message<textarea name="note" rows="4" maxlength="900" required></textarea></label>
+        <div class="row-actions"><button class="button button-primary" type="submit"><span>Send through PayPal</span><span aria-hidden="true">→</span></button><button class="mini-button" type="button" id="reminder-cancel">Cancel</button></div>
+      </form>
+      <h3 class="subhead">Activity</h3>
+      <ul id="activity" class="activity" aria-live="polite"><li class="empty-cell">No activity yet.</li></ul>
     </section>
 
     <aside class="trust-note" aria-label="Important payment safety information">
