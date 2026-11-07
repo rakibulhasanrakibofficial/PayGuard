@@ -459,3 +459,36 @@ footer{border:0;color:#929dad}footer span:first-child{color:#687589}
 @keyframes authCardIn{from{opacity:0;transform:translateY(20px) rotateX(5deg)}to{opacity:1;transform:translateY(0) rotateX(0)}}
 @media(max-width:600px){#access-gate.access-gate{inset:60px 0 0;padding:26px 18px}.auth-wrapper{width:390px}.auth-card{padding:34px 25px;border-radius:29px}.auth-bg-one{width:115px;height:115px;left:-35px;top:14%}.auth-bg-two{width:85px;height:85px;right:-25px;bottom:9%}.auth-bg-three{width:35px;height:35px;right:12%;top:16%}}
 @media(prefers-reduced-motion:reduce){.auth-bg-circle,.auth-logo,.auth-card,.auth-input-group:before{animation:none!important;transition:none!important}}
+
+
+/* Layout containment hotfix: keep the secure access card fully expanded */
+#access-gate.access-gate:not([hidden]){
+  position:fixed!important;inset:68px 0 0!important;width:100vw!important;max-width:none!important;
+  height:calc(100vh - 68px)!important;min-height:420px!important;margin:0!important;
+  display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;
+  overflow-x:hidden!important;overflow-y:auto!important;padding:32px 20px!important;
+  box-sizing:border-box!important;background:#e7ebf0!important;
+}
+#access-gate .auth-wrapper{position:relative!important;display:block!important;flex:0 0 420px!important;
+  width:min(420px,calc(100vw - 40px))!important;max-width:calc(100vw - 40px)!important;
+  height:auto!important;min-height:0!important;margin:auto!important;transform:none!important;
+}
+#access-gate .auth-card{display:block!important;position:relative!important;width:100%!important;height:auto!important;
+  min-height:0!important;max-height:none!important;overflow:visible!important;box-sizing:border-box!important;
+  padding:38px 36px!important;border:0!important;border-radius:30px!important;background:#e7ebf0!important;
+  box-shadow:14px 14px 30px rgba(163,177,198,.62),-14px -14px 30px rgba(255,255,255,.95)!important;
+}
+#access-gate .auth-panel{display:block!important;width:100%!important;height:auto!important;min-height:0!important;overflow:visible!important}
+#access-gate .auth-logo{margin:0 auto 18px!important}
+#access-gate .auth-form{display:block!important;width:100%!important}
+#access-gate .auth-input-group{display:block!important;width:100%!important;height:58px!important;min-height:58px!important}
+#access-gate .auth-input-group input{display:block!important;height:54px!important;min-height:54px!important}
+#access-gate .auth-submit{display:flex!important;width:100%!important;min-height:55px!important}
+#access-gate .auth-footer{display:flex!important;margin-top:22px!important}
+body:has(#access-gate:not([hidden])){overflow:hidden!important}
+body:has(#access-gate:not([hidden])) footer{visibility:hidden!important}
+@media(max-width:600px){
+ #access-gate.access-gate:not([hidden]){inset:60px 0 0!important;height:calc(100vh - 60px)!important;min-height:400px!important;padding:24px 18px!important}
+ #access-gate .auth-wrapper{flex-basis:auto!important;width:min(390px,calc(100vw - 36px))!important;max-width:calc(100vw - 36px)!important}
+ #access-gate .auth-card{padding:32px 24px!important;border-radius:26px!important}
+}
