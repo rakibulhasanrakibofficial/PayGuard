@@ -12,7 +12,7 @@ Freelancers lose time chasing invoices and lose money to payment scams ("I overp
 
 - **AI invoice drafting:** describe the job in one sentence ("Invoice Rahim (rahim@example.com) for 5 hours of logo design at $20/hr, due in 10 days"). Claude fills the form; you review it; PayPal's Invoicing API creates and sends it. Works without an AI key through a built-in parser.
 - **Invoice dashboard:** live list from PayPal with status (awaiting, overdue, partly paid, paid), refreshed every 20 seconds.
-- **Payment verification:** "Verify" asks PayPal whether an invoice is truly paid. Capture-ID lookup is also included.
+- **Payment verification:** the invoice-level "Verify" action asks PayPal whether an invoice is truly paid. Standalone capture-ID lookup is intentionally unavailable until capture ownership can be securely mapped.
 - **Late-payment reminders:** AI writes a polite reminder with the right tone; PayPal delivers it.
 - **Scam check backed by PayPal:** paste a client message. PayGuard flags scam patterns, extracts what the client *claims* (paid X, refund Y), then checks the related invoice in PayPal. "I paid $500, send back $300" against an unpaid invoice becomes **HIGH risk: PAYMENT_NOT_FOUND**. AI can only raise risk, never excuse it.
 - **Webhooks:** signature-verified with PayPal and processed once per event id (idempotent), shown in the activity feed.
@@ -125,7 +125,7 @@ The GitHub Pages workflow writes the backend origin into `public/config.js` duri
 | POST | `/api/invoices/:id/remind` | Send the reminder through PayPal |
 | POST | `/api/invoices/:id/sandbox-pay` | Sandbox only: simulate the client paying |
 | POST | `/api/scam/analyze` | Risk analysis, optionally verified against an invoice (`invoiceId`) |
-| GET | `/api/payments/capture/:captureId` | Query a capture from PayPal |
+| — | Capture-ID lookup | Disabled until capture ownership can be securely mapped |
 | POST | `/api/paypal/webhook` | Verify signature, process each event once |
 | GET | `/api/activity` | Recent events |
 

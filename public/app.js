@@ -68,14 +68,7 @@ $("#scam-form").addEventListener("submit", async e => {
   } catch (err) { show("#scam-result", esc(err.message), "risk-high"); } finally { busy(form, false); }
 });
 
-/* ---------- Capture lookup (unchanged) ---------- */
-$("#verify-form").addEventListener("submit", async e => {
-  e.preventDefault(); const form = e.currentTarget; busy(form, true); show("#verify-result", "");
-  try {
-    const id = String(new FormData(form).get("captureId")).trim(); const data = await request("/api/payments/capture/" + encodeURIComponent(id));
-    show("#verify-result", `<h3>PayPal API response: ${esc(data.status)}</h3><p>Capture ID: ${esc(data.captureId)}</p><p>Amount: ${esc(data.amount?.value)} ${esc(data.amount?.currency_code)}</p><p>Source: ${esc(data.source)} · ${esc(data.environment)}</p>`, data.status === "COMPLETED" ? "risk-low" : "risk-medium");
-  } catch (err) { show("#verify-result", esc(err.message), "risk-high"); } finally { busy(form, false); }
-});
+/* Capture-ID lookup is intentionally not exposed: ownership cannot be safely established. */
 
 /* ---------- Dashboard ---------- */
 function statusBadge(i) {
@@ -88,13 +81,23 @@ function statusBadge(i) {
 }
 function renderInvoices() {
   const body = $("#invoice-rows");
-  body.innerHTML = invoices.length ? invoices.map(i => {
+  const query = ($("#invoice-search")?.value || "").trim().toLowerCase();
+  const status = $("#invoice-status-filter")?.value || "all";
+  const filtered = invoices.filter(i => {
+    const [label, cls] = statusBadge(i);
+    const matchesQuery = !query || [i.number, i.client, i.id].some(v => String(v || "").toLowerCase().includes(query));
+    const matchesStatus = status === "all" || (status === "paid" && cls === "badge-paid") || (status === "cancelled" && cls === "badge-muted" && i.status === "CANCELLED") || (status === "overdue" && cls === "badge-late") || (status === "open" && !["badge-paid", "badge-muted", "badge-late"].includes(cls));
+    return matchesQuery && matchesStatus;
+  });
+  body.innerHTML = filtered.length ? filtered.map(i => {
     const [label, cls] = statusBadge(i); const paid = cls === "badge-paid";
     return `<tr><td>${i.link ? `<a href="${esc(i.link)}" target="_blank" rel="noopener noreferrer">${esc(i.number)}</a>` : esc(i.number)}</td><td>${esc(i.client)}</td><td>${money(i.total, i.currency)}</td><td>${money(i.paid, i.currency)}</td><td>${esc(i.dueDate || "")}</td><td><span class="badge ${cls}">${label}</span></td>
       <td class="cell-actions"><button class="mini-button" data-act="verify" data-id="${esc(i.id)}">Verify</button>${paid ? "" : `<button class="mini-button" data-act="remind" data-id="${esc(i.id)}">Remind</button><button class="mini-button" data-act="pay" data-id="${esc(i.id)}" title="Sandbox only: simulates the client paying">Simulate payment</button>`}</td></tr>`;
-  }).join("") : '<tr><td colspan="7" class="empty-cell">No invoices yet. Create one above.</td></tr>';
+  }).join("") : `<tr><td colspan="7" class="empty-cell">${invoices.length ? "No invoices match your search or filter." : "No invoices yet. Create one above."}</td></tr>`;
   $("#scam-invoice").innerHTML = '<option value="">None, or detect from the message</option>' + invoices.map(i => `<option value="${esc(i.id)}">${esc(i.number)} · ${esc(i.client)} · ${money(i.total, i.currency)}</option>`).join("");
 }
+$("#invoice-search").addEventListener("input", renderInvoices);
+$("#invoice-status-filter").addEventListener("change", renderInvoices);
 async function loadInvoices(quiet) {
   try { invoices = (await request("/api/invoices")).invoices; renderInvoices(); }
   catch (err) { if (!quiet) $("#invoice-rows").innerHTML = `<tr><td colspan="7" class="empty-cell">${esc(err.message)}</td></tr>`; }
