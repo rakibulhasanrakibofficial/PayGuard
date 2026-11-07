@@ -422,3 +422,40 @@ footer{border:0;color:#929dad}footer span:first-child{color:#687589}
  .access-panel{padding:30px 23px;border-radius:22px}
 }
 @media(prefers-reduced-motion:reduce){.hero-panel:before,.hero-shield,.hero-orbit,.tool-card{animation:none!important;transition:none!important}}
+
+
+/* Secure PayGuard access screen — adapted from supplied login/signup source */
+#access-gate[hidden]{display:none!important}
+#access-gate.access-gate{position:fixed;inset:68px 0 0;z-index:30;display:flex;align-items:center;justify-content:center;overflow:auto;padding:34px 18px;background:#e7ebf0}
+.auth-bg-circle{position:fixed;z-index:0;border-radius:50%;background:#e7ebf0;box-shadow:15px 15px 30px rgba(163,177,198,.55),-15px -15px 30px rgba(255,255,255,.95);animation:authFloat 6s ease-in-out infinite;pointer-events:none}
+.auth-bg-one{width:190px;height:190px;left:7%;top:14%}.auth-bg-two{width:130px;height:130px;right:8%;bottom:8%;animation-delay:1.5s}.auth-bg-three{width:55px;height:55px;right:20%;top:22%;animation-delay:3s}
+.auth-wrapper{position:relative;z-index:1;width:400px;max-width:100%;perspective:1200px}
+.auth-card{position:relative;width:100%;padding:40px 38px;border-radius:35px;background:#e7ebf0;box-shadow:20px 20px 40px rgba(163,177,198,.65),-20px -20px 40px rgba(255,255,255,.95);animation:authCardIn .7s cubic-bezier(.2,.8,.2,1) both}
+.auth-panel{text-align:center}.auth-logo{width:86px;height:86px;margin:0 auto 18px;display:grid;place-items:center;border-radius:50%;font-size:30px;color:#087cff;background:#e7ebf0;box-shadow:9px 9px 18px rgba(163,177,198,.65),-9px -9px 18px rgba(255,255,255,.95);animation:authFloat 4s ease-in-out infinite}
+.auth-logo span{filter:saturate(.8)}.auth-kicker{margin:0 0 8px;color:#178bd0;font:700 10px "DM Sans",sans-serif;letter-spacing:.15em}
+.auth-panel h1{margin:0 0 7px;color:#303943;font:800 27px "Manrope",sans-serif;text-align:center}
+.auth-subtitle{margin:0 0 30px;color:#7c858e;font-size:13px}
+.auth-form{text-align:left}.auth-input-group{position:relative;width:100%;height:58px;margin-bottom:19px;border-radius:19px}
+.auth-input-group:before{content:"";position:absolute;inset:-2px;border-radius:20px;background:conic-gradient(from 0deg,transparent 0 30%,#00eaff 45%,#00aaff 65%,#006cff 80%,transparent 90%);opacity:0;animation:authSpin 1.1s linear infinite;transition:opacity .2s}
+.auth-input-group:after{content:"";position:absolute;inset:1px;border-radius:17px;background:#e7ebf0;pointer-events:none}
+.auth-input-group:focus-within:before{opacity:1}
+.auth-input-group input{position:absolute;z-index:2;inset:2px;width:calc(100% - 4px);height:54px;border:0;border-radius:16px;background:#e7ebf0;color:#303943;font-size:14px;padding:0 52px 0 18px;box-shadow:inset 6px 6px 12px rgba(163,177,198,.55),inset -6px -6px 12px rgba(255,255,255,.95)}
+.auth-input-group label{position:absolute;z-index:3;left:18px;top:19px;color:#89929c;font-size:13px;pointer-events:none;transition:all .22s}
+.auth-input-group input:focus+label,.auth-input-group input:not(:placeholder-shown)+label{top:-9px;left:13px;padding:2px 8px;border-radius:7px;background:#e7ebf0;color:#0072ff;font-size:10px}
+.auth-password-toggle{position:absolute;z-index:5;right:12px;top:14px;width:30px;height:30px;border:0;border-radius:50%;background:transparent;color:#7d8790;cursor:pointer}
+.auth-password-toggle:hover{color:#006cff;transform:scale(1.1)}
+.auth-hint{margin:-6px 3px 18px;color:#7d8790;font-size:11px}
+.auth-submit{position:relative;isolation:isolate;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;height:55px;border:0;border-radius:17px;background:#e7ebf0;color:#006cff;font-size:13px;font-weight:800;letter-spacing:.03em;cursor:pointer;overflow:hidden;box-shadow:8px 8px 16px rgba(163,177,198,.65),-8px -8px 16px rgba(255,255,255,.95);transition:.3s}
+.auth-submit:before{content:"";position:absolute;z-index:-1;inset:0;background:linear-gradient(110deg,#006cff,#00cfff,#006cff);background-size:200% 100%;transform:translateY(101%);transition:transform .35s}
+.auth-submit:hover:before{transform:translateY(0);animation:authButtonMove 1.5s linear infinite}
+.auth-submit:hover{color:white;transform:translateY(-3px);box-shadow:0 10px 25px rgba(0,114,255,.28)}
+.auth-submit:disabled{opacity:.7;cursor:wait;transform:none}
+.auth-note{min-height:18px;margin:12px 2px 0;color:#b34d4d;font-size:12px;text-align:center}
+.auth-footer{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:25px;color:#7d8790;font-size:10px;letter-spacing:.1em}
+.auth-secure-dot{width:7px;height:7px;border-radius:50%;background:#1bb68a;box-shadow:0 0 0 4px rgba(27,182,138,.12)}
+@keyframes authFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+@keyframes authSpin{to{transform:rotate(360deg)}}
+@keyframes authButtonMove{to{background-position:200% 50%}}
+@keyframes authCardIn{from{opacity:0;transform:translateY(20px) rotateX(5deg)}to{opacity:1;transform:translateY(0) rotateX(0)}}
+@media(max-width:600px){#access-gate.access-gate{inset:60px 0 0;padding:26px 18px}.auth-wrapper{width:390px}.auth-card{padding:34px 25px;border-radius:29px}.auth-bg-one{width:115px;height:115px;left:-35px;top:14%}.auth-bg-two{width:85px;height:85px;right:-25px;bottom:9%}.auth-bg-three{width:35px;height:35px;right:12%;top:16%}}
+@media(prefers-reduced-motion:reduce){.auth-bg-circle,.auth-logo,.auth-card,.auth-input-group:before{animation:none!important;transition:none!important}}
