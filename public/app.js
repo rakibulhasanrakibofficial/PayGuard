@@ -1,7 +1,10 @@
 const $ = (s) => document.querySelector(s);
 const API_BASE = String(window.PAYGUARD_API_BASE || "").replace(/\/$/, "");
-async function request(url, options) {
-  const response = await fetch(`${API_BASE}${url}`, options);
+async function request(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const accessKey = sessionStorage.getItem("payguard-access-key");
+  if (accessKey) headers.set("X-PayGuard-Access-Key", accessKey);
+  const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Request failed.");
   return data;
@@ -119,5 +122,48 @@ async function loadActivity() {
     $("#activity").innerHTML = activity.length ? activity.map(a => `<li>${esc(a.text)}<time>${esc(new Date(a.at).toLocaleString())}</time></li>`).join("") : '<li class="empty-cell">No activity yet.</li>';
   } catch { /* non-critical */ }
 }
-loadInvoices(); loadActivity();
-setInterval(() => { loadInvoices(true); loadActivity(); }, 20000); // keeps statuses fresh even before webhooks are set up
+let workspaceStarted = false;
+function startWorkspace() {
+  if (workspaceStarted) return;
+  workspaceStarted = true;
+  $("#access-gate").hidden = true;
+  $("#workspace-content").hidden = false;
+  loadInvoices(); loadActivity();
+  setInterval(() => { loadInvoices(true); loadActivity(); }, 20000);
+}
+async function initializeWorkspace() {
+  try {
+    const health = await request("/api/health");
+    if (!health.accessKeyRequired) { startWorkspace(); return; }
+    $("#workspace-content").hidden = true;
+    $("#access-gate").hidden = false;
+    const saved = sessionStorage.getItem("payguard-access-key");
+    if (saved) {
+      try { await request("/api/activity"); startWorkspace(); }
+      catch { sessionStorage.removeItem("payguard-access-key"); }
+    }
+  } catch {
+    $("#workspace-content").hidden = true;
+    $("#access-gate").hidden = false;
+    $("#access-note").textContent = "Could not reach the PayGuard API. Check the API URL and try again.";
+  }
+}
+$("#access-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const key = String(new FormData(form).get("accessKey") || "").trim();
+  $("#access-note").textContent = "Checking access…";
+  const button = form.querySelector("button");
+  button.disabled = true;
+  sessionStorage.setItem("payguard-access-key", key);
+  try {
+    await request("/api/activity");
+    $("#access-note").textContent = "";
+    form.reset();
+    startWorkspace();
+  } catch (err) {
+    sessionStorage.removeItem("payguard-access-key");
+    $("#access-note").textContent = err.message;
+  } finally { button.disabled = false; }
+});
+initializeWorkspace();
