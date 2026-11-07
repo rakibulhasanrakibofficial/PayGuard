@@ -692,3 +692,11 @@ body::after{width:clamp(54px,7vw,108px);height:clamp(54px,7vw,108px);right:clamp
 @keyframes sideOrbFloatB{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-14px,20px,0) scale(.96)}}
 @media(max-width:760px){body::before{left:-42px;top:17%;opacity:.48}body::after{right:-28px;bottom:12%;opacity:.42}}
 @media(prefers-reduced-motion:reduce){body::before,body::after{animation:none!important}}
+
+
+/* Supabase account form controls */
+.auth-links{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.auth-links button{border:0;background:transparent;color:#8974c6;font-size:12px;font-weight:700;cursor:pointer;padding:6px 0}
+.auth-links button:hover{text-decoration:underline}
+.auth-links button[hidden]{display:none}
+#auth-email,#auth-password{padding-right:18px}
