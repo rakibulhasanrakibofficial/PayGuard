@@ -270,9 +270,10 @@ export default {
       const accessKey = typeof env.PAYGUARD_ACCESS_KEY === "string" ? env.PAYGUARD_ACCESS_KEY : "";
       const accessRequired = env.PAYGUARD_REQUIRE_ACCESS_KEY === "true" || accessKey.length > 0;
       if (!isHealth && !isWebhook) {
+        // Throttle before checking credentials so invalid-key attempts are throttled too.
+        enforceRateLimit(request, path);
         if (accessRequired && accessKey.length < 32) fail("API access is not configured safely. Set PAYGUARD_ACCESS_KEY to a random value of at least 32 characters.", 503);
         if (accessRequired && !(await accessKeyMatches(accessKey, request.headers.get("X-PayGuard-Access-Key")))) fail("Workspace access key is missing or invalid.", 401);
-        enforceRateLimit(request, path);
       }
       if (isHealth) {
         return reply({ ok: true, service: "PayGuard", environment: "SANDBOX", paypalConfigured: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET), ai: env.ANTHROPIC_API_KEY ? "claude" : "rules-only", storage: env.PAYGUARD_KV ? "kv" : "memory", webhookVerification: !!env.PAYPAL_WEBHOOK_ID, accessKeyRequired: accessRequired, publicApiWarning: !accessRequired });
