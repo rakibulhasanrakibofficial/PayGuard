@@ -10,13 +10,46 @@ function json(data, status = 200, origin = FRONTEND_ORIGIN) {
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Headers": "Content-Type, X-PayGuard-Access-Key",
       "Vary": "Origin",
       "X-Content-Type-Options": "nosniff"
     }
   });
 }
 function fail(message, status = 500) { const e = new Error(message); e.status = status; throw e; }
+
+const rateBuckets = new Map();
+async function accessKeyMatches(expected, supplied) {
+  if (typeof supplied !== "string" || supplied.length > 256) return false;
+  const encoder = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+    crypto.subtle.digest("SHA-256", encoder.encode(supplied))
+  ]);
+  const left = new Uint8Array(a), right = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < left.length; i++) diff |= left[i] ^ right[i];
+  return diff === 0;
+}
+function enforceRateLimit(request, path) {
+  const ip = request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() || "unknown";
+  const group = path === "/api/scam/analyze" || path === "/api/invoices/draft"
+    ? "ai"
+    : path === "/api/invoices" || /\/(remind|sandbox-pay)$/.test(path)
+      ? "write"
+      : "read";
+  const limits = { ai: 8, write: 5, read: 40 };
+  const key = `${ip}:${group}`;
+  const now = Date.now();
+  let bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.start >= 60_000) bucket = { start: now, count: 0 };
+  bucket.count++;
+  rateBuckets.set(key, bucket);
+  if (rateBuckets.size > 5000) {
+    for (const [k, v] of rateBuckets) if (now - v.start >= 60_000) rateBuckets.delete(k);
+  }
+  if (bucket.count > limits[group]) fail("Too many requests. Please wait one minute and try again.", 429);
+}
 async function bodyJson(request) {
   const contentLength = Number(request.headers.get("Content-Length") || 0);
   if (contentLength > 32768) fail("Request body is too large.", 413);
@@ -232,8 +265,17 @@ export default {
     const path = url.pathname;
     const m = (re) => path.match(re);
     try {
-      if (request.method === "GET" && path === "/api/health") {
-        return reply({ ok: true, service: "PayGuard", environment: "SANDBOX", paypalConfigured: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET), ai: env.ANTHROPIC_API_KEY ? "claude" : "rules-only", storage: env.PAYGUARD_KV ? "kv" : "memory", webhookVerification: !!env.PAYPAL_WEBHOOK_ID });
+      const isHealth = request.method === "GET" && path === "/api/health";
+      const isWebhook = request.method === "POST" && path === "/api/paypal/webhook";
+      const accessKey = typeof env.PAYGUARD_ACCESS_KEY === "string" ? env.PAYGUARD_ACCESS_KEY : "";
+      const accessRequired = env.PAYGUARD_REQUIRE_ACCESS_KEY === "true" || accessKey.length > 0;
+      if (!isHealth && !isWebhook) {
+        if (accessRequired && accessKey.length < 32) fail("API access is not configured safely. Set PAYGUARD_ACCESS_KEY to a random value of at least 32 characters.", 503);
+        if (accessRequired && !(await accessKeyMatches(accessKey, request.headers.get("X-PayGuard-Access-Key")))) fail("Workspace access key is missing or invalid.", 401);
+        enforceRateLimit(request, path);
+      }
+      if (isHealth) {
+        return reply({ ok: true, service: "PayGuard", environment: "SANDBOX", paypalConfigured: !!(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET), ai: env.ANTHROPIC_API_KEY ? "claude" : "rules-only", storage: env.PAYGUARD_KV ? "kv" : "memory", webhookVerification: !!env.PAYPAL_WEBHOOK_ID, accessKeyRequired: accessRequired, publicApiWarning: !accessRequired });
       }
       if (request.method === "GET" && path === "/api/activity") return reply({ activity: await getActivity(env) });
 
