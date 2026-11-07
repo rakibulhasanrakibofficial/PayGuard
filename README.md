@@ -17,7 +17,8 @@ Freelancers lose time chasing invoices and lose money to payment scams ("I overp
 - **Scam check backed by PayPal:** paste a client message. PayGuard flags scam patterns, extracts what the client *claims* (paid X, refund Y), then checks the related invoice in PayPal. "I paid $500, send back $300" against an unpaid invoice becomes **HIGH risk: PAYMENT_NOT_FOUND**. AI can only raise risk, never excuse it.
 - **Webhooks:** signature-verified with PayPal and processed once per event id (idempotent), shown in the activity feed.
 - Server-side secrets only. No API credentials in frontend code.
-- Optional shared-key gate for private demos and API-side request throttling.
+- Supabase email/password accounts with password reset and server-verified sessions.
+- Per-user invoice ownership and private activity history (shared PayPal Sandbox merchant credentials remain server-side).
 
 ## Stack
 
@@ -63,6 +64,21 @@ npx wrangler secret put ANTHROPIC_API_KEY
 
 For local development, use a `.dev.vars` file containing these values. It is ignored by Git. Never commit secrets or paste them into chat.
 
+## Supabase account setup
+
+The multi-user branch uses Supabase Auth for email/password sign-in and PostgREST tables for invoice ownership and per-user activity.
+
+1. Create a Supabase project at https://supabase.com/dashboard.
+2. In **SQL Editor**, run the complete migration in `supabase/migrations/202611080001_multi_user_ownership.sql`.
+3. In **Project Settings → API**, copy the Project URL and publishable/anon key. Add them to `public/config.js` as `PAYGUARD_SUPABASE_URL` and `PAYGUARD_SUPABASE_ANON_KEY`. These are public browser settings; never put the service-role key in frontend code.
+4. In **Authentication → URL Configuration**, add the GitHub Pages URL `https://rakibulhasanrakibofficial.github.io/PayGuard/` to the allowed redirect URLs.
+5. In Cloudflare Worker **Settings → Variables and Secrets**, add secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The service-role key must remain only in the Worker secret store.
+6. Deploy the Worker, then deploy the Pages frontend. New users create accounts with email and password; if email confirmation is enabled, they must confirm their email before signing in.
+
+The Worker verifies every Supabase access token against Supabase Auth. Invoice IDs are mapped to the creating user; list and invoice actions are restricted to that owner. User activity is stored separately. Existing PayPal invoices created before ownership tracking are not automatically assigned to anyone. Capture-ID lookup is disabled until capture ownership can be securely mapped.
+
+Supabase Auth and the ownership schema must be configured before protected API routes will work. Keep PayPal Sandbox enabled; this is not a production-ready payments platform.
+
 ## Deploy the API to Cloudflare Workers
 
 The Worker entry point is `worker/index.js`; `wrangler.toml` configures the Worker name as `payguard-api`.
@@ -79,9 +95,8 @@ The Worker entry point is `worker/index.js`; `wrangler.toml` configures the Work
    - `PAYPAL_CLIENT_SECRET` — PayPal Sandbox REST app secret
    - `PAYPAL_WEBHOOK_ID` — Sandbox webhook ID (only needed for webhook verification)
    - `ANTHROPIC_API_KEY` — optional; enables Claude-assisted analysis
-7. Add the Worker secret `PAYGUARD_ACCESS_KEY` using a unique random value of at least 32 characters. The Pages frontend asks for this shared demo key and keeps it in the current tab's `sessionStorage`.
-8. Keep `PAYGUARD_REQUIRE_ACCESS_KEY=true` in Worker variables. The Worker refuses protected API requests if the key is missing or too short. `/api/health` and PayPal signature-verified webhooks remain public by design.
-9. Optional non-secret variables: `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` and `ANTHROPIC_MODEL=claude-sonnet-4-6`.
+7. Keep PayPal and Supabase service credentials in Worker secrets. `/api/health` and PayPal signature-verified webhooks remain public by design.
+8. Optional non-secret variables: `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` and `ANTHROPIC_MODEL=claude-sonnet-4-6`.
 
 Do not put secret values in GitHub source files. Keep PayPal in Sandbox mode.
 
@@ -124,7 +139,7 @@ Activity and webhook de-duplication use Cloudflare KV when a namespace named `PA
 
 ## Important limitations
 
-This is a learning MVP, **not production-ready financial software**. The shared workspace key is only a private-demo gate, not individual user authentication: it provides no per-user identity, role, or invoice ownership. A person with the shared key can access the same Sandbox merchant data, and a key entered into a browser is visible to that browser's user. Worker throttling is best-effort per isolate, not globally shared; configure Cloudflare edge rate limiting/WAF as well. Keep PayGuard in Sandbox, use synthetic data, and never publish the shared key. Before real users or money, implement individual authentication, invoice ownership, durable audit records, reliable webhook processing, full checkout reconciliation, privacy controls, edge rate limiting and an independent security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
+This is a learning MVP, **not production-ready financial software**. Account authentication is individual, but PayPal API credentials still connect to one shared Sandbox merchant. Invoice ownership is enforced by PayGuard metadata; invoices created before this feature are not assigned to users. Worker throttling is best-effort per isolate, not globally shared; configure Cloudflare edge rate limiting/WAF as well. Keep PayGuard in Sandbox, use synthetic data, and never publish the shared key. Before real users or money, implement individual authentication, invoice ownership, durable audit records, reliable webhook processing, full checkout reconciliation, privacy controls, edge rate limiting and an independent security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
 
 ## Tests
 

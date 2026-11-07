@@ -1,9 +1,13 @@
 const $ = (s) => document.querySelector(s);
 const API_BASE = String(window.PAYGUARD_API_BASE || "").replace(/\/$/, "");
+const SUPABASE_URL = String(window.PAYGUARD_SUPABASE_URL || "");
+const SUPABASE_ANON_KEY = String(window.PAYGUARD_SUPABASE_ANON_KEY || "");
+const supabase = window.supabase?.createClient && SUPABASE_URL && SUPABASE_ANON_KEY
+ ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }) : null;
 async function request(url, options = {}) {
   const headers = new Headers(options.headers || {});
-  const accessKey = sessionStorage.getItem("payguard-access-key");
-  if (accessKey) headers.set("X-PayGuard-Access-Key", accessKey);
+  const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+  if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
   const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Request failed.");
@@ -122,58 +126,54 @@ async function loadActivity() {
     $("#activity").innerHTML = activity.length ? activity.map(a => `<li>${esc(a.text)}<time>${esc(new Date(a.at).toLocaleString())}</time></li>`).join("") : '<li class="empty-cell">No activity yet.</li>';
   } catch { /* non-critical */ }
 }
+
 let workspaceStarted = false;
+let authMode = "signin";
 function startWorkspace() {
-  if (workspaceStarted) return;
-  workspaceStarted = true;
-  $("#access-gate").hidden = true;
-  $("#workspace-content").hidden = false;
-  loadInvoices(); loadActivity();
-  setInterval(() => { loadInvoices(true); loadActivity(); }, 20000);
+ if(workspaceStarted)return; workspaceStarted=true;
+ $("#access-gate").hidden=true; $("#workspace-content").hidden=false;
+ loadInvoices();loadActivity();setInterval(()=>{loadInvoices(true);loadActivity()},20000);
 }
-async function initializeWorkspace() {
-  try {
-    const health = await request("/api/health");
-    if (!health.accessKeyRequired) { startWorkspace(); return; }
-    $("#workspace-content").hidden = true;
-    $("#access-gate").hidden = false;
-    const saved = sessionStorage.getItem("payguard-access-key");
-    if (saved) {
-      try { await request("/api/activity"); startWorkspace(); }
-      catch { sessionStorage.removeItem("payguard-access-key"); }
-    }
-  } catch {
-    $("#workspace-content").hidden = true;
-    $("#access-gate").hidden = false;
-    $("#access-note").textContent = "Could not reach the PayGuard API. Check the API URL and try again.";
-  }
+function showAuth(note=""){workspaceStarted=false;$("#workspace-content").hidden=true;$("#access-gate").hidden=false;$("#signout-button").hidden=true;$("#access-note").textContent=note}
+function setAuthMode(mode){
+ authMode=mode;const signup=mode==="signup";
+ $("#access-title").textContent=signup?"Create account":"Welcome back";
+ $("#auth-subtitle").textContent=signup?"Create your secure PayGuard account":"Sign in to your payment safety workspace";
+ $("#auth-submit-label").textContent=signup?"Create account":"Sign in";
+ $("#auth-mode-toggle").textContent=signup?"Already have an account? Sign in":"Create an account";
+ $("#auth-reset").hidden=signup;$("#auth-password").autocomplete=signup?"new-password":"current-password";$("#access-note").textContent="";
 }
-$("#access-form").addEventListener("submit", async e => {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const key = String(new FormData(form).get("accessKey") || "").trim();
-  $("#access-note").textContent = "Checking access…";
-  const button = form.querySelector("button");
-  button.disabled = true;
-  sessionStorage.setItem("payguard-access-key", key);
-  try {
-    await request("/api/activity");
-    $("#access-note").textContent = "";
-    form.reset();
-    startWorkspace();
-  } catch (err) {
-    sessionStorage.removeItem("payguard-access-key");
-    $("#access-note").textContent = err.message;
-  } finally { button.disabled = false; }
+async function initializeWorkspace(){
+ try{
+  const health=await fetch(`${API_BASE}/api/health`);if(!health.ok)throw new Error("PayGuard API is unavailable.");
+  if(!supabase){showAuth("Supabase is not configured yet. The owner must add the Supabase project URL and publishable anon key.");return}
+  const {data:{session}}=await supabase.auth.getSession();
+  if(session){try{await request("/api/activity");startWorkspace();return}catch{await supabase.auth.signOut()}}
+  showAuth();
+ }catch(err){showAuth(err.message||"Could not reach PayGuard.")}
+}
+$("#auth-form").addEventListener("submit",async e=>{
+ e.preventDefault();if(!supabase)return showAuth("Supabase setup is required before accounts can be created.");
+ const form=e.currentTarget,email=String(new FormData(form).get("email")||"").trim(),password=String(new FormData(form).get("password")||"");
+ const button=form.querySelector('button[type="submit"]');button.disabled=true;$("#access-note").textContent=authMode==="signup"?"Creating account…":"Signing in…";
+ try{
+  const result=authMode==="signup"?await supabase.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+window.location.pathname}}):await supabase.auth.signInWithPassword({email,password});
+  if(result.error)throw result.error;
+  if(authMode==="signup"&&!result.data.session){setAuthMode("signin");$("#access-note").textContent="Account created. Check your email to confirm, then sign in.";return}
+  await request("/api/activity");form.reset();startWorkspace();
+ }catch(err){$("#access-note").textContent=err.message||"Authentication failed."}
+ finally{button.disabled=false}
+});
+$("#auth-mode-toggle").addEventListener("click",()=>setAuthMode(authMode==="signin"?"signup":"signin"));
+$("#auth-reset").addEventListener("click",async()=>{
+ const email=$("#auth-email").value.trim();if(!email){$("#access-note").textContent="Enter your email address first.";return}
+ $("#access-note").textContent="Sending reset email…";
+ const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+window.location.pathname});
+ $("#access-note").textContent=error?error.message:"If this email has an account, a reset link has been sent.";
+});
+$("#signout-button").addEventListener("click",async()=>{if(supabase)await supabase.auth.signOut();location.reload()});
+$("#auth-password-toggle").addEventListener("click",()=>{
+ const input=$("#auth-password"),reveal=input.type==="password";input.type=reveal?"text":"password";
+ $("#auth-password-toggle").setAttribute("aria-label",reveal?"Hide password":"Show password");$("#auth-password-toggle").textContent=reveal?"◎":"◉";
 });
 
-const accessToggle = $("#access-key-toggle");
-if (accessToggle) accessToggle.addEventListener("click", () => {
-  const input = $("#access-key");
-  const reveal = input.type === "password";
-  input.type = reveal ? "text" : "password";
-  accessToggle.setAttribute("aria-label", reveal ? "Hide access key" : "Show access key");
-  accessToggle.textContent = reveal ? "◎" : "◉";
-});
-
-initializeWorkspace();

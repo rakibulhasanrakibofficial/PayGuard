@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=lavender-side-motion-8">
   <script src="config.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -18,35 +19,26 @@
     <a class="brand" href="./" aria-label="PayGuard home"><span class="brand-mark" aria-hidden="true">P</span><span>payguard</span></a>
     <div class="topbar-right">
       <span class="environment"><span class="status-dot" aria-hidden="true"></span> PAYPAL SANDBOX</span>
-      <span class="topbar-caption">PAYMENT SAFETY WORKSPACE</span>
+      <span class="topbar-caption">PAYMENT SAFETY WORKSPACE</span><button id="signout-button" class="mini-button" type="button" hidden>Sign out</button>
     </div>
   </header>
 
   <section id="access-gate" class="access-gate" hidden aria-labelledby="access-title">
-    <div class="auth-bg-circle auth-bg-one" aria-hidden="true"></div>
-    <div class="auth-bg-circle auth-bg-two" aria-hidden="true"></div>
-    <div class="auth-bg-circle auth-bg-three" aria-hidden="true"></div>
-    <div class="auth-wrapper">
-      <div class="auth-card">
-        <div class="auth-panel">
-          <div class="auth-logo" aria-hidden="true"><span>🔒</span></div>
-          <p class="auth-kicker">PAYGUARD PRIVATE WORKSPACE</p>
-          <h1 id="access-title">Welcome</h1>
-          <p class="auth-subtitle">Unlock your payment safety workspace</p>
-          <form id="access-form" class="auth-form">
-            <div class="auth-input-group">
-              <input id="access-key" name="accessKey" type="password" minlength="32" maxlength="256" autocomplete="off" required placeholder=" " aria-label="Workspace access key">
-              <label for="access-key">Workspace access key</label>
-              <button class="auth-password-toggle" type="button" id="access-key-toggle" aria-label="Show access key">◉</button>
-            </div>
-            <p class="auth-hint">Your key stays in this browser tab only.</p>
-            <button class="auth-submit" type="submit"><span>Unlock workspace</span><span aria-hidden="true">→</span></button>
-            <p id="access-note" class="auth-note" role="status" aria-live="polite"></p>
-          </form>
-          <div class="auth-footer"><span class="auth-secure-dot"></span> PRIVATE DEMO · SANDBOX MODE</div>
-        </div>
-      </div>
-    </div>
+    <div class="auth-bg-circle auth-bg-one" aria-hidden="true"></div><div class="auth-bg-circle auth-bg-two" aria-hidden="true"></div><div class="auth-bg-circle auth-bg-three" aria-hidden="true"></div>
+    <div class="auth-wrapper"><div class="auth-card"><div class="auth-panel">
+      <div class="auth-logo" aria-hidden="true"><span>🔒</span></div>
+      <p class="auth-kicker">PAYGUARD PRIVATE WORKSPACE</p>
+      <h1 id="access-title">Welcome back</h1>
+      <p class="auth-subtitle" id="auth-subtitle">Sign in to your payment safety workspace</p>
+      <form id="auth-form" class="auth-form">
+        <div class="auth-input-group"><input id="auth-email" name="email" type="email" autocomplete="email" required placeholder=" "><label for="auth-email">Email address</label></div>
+        <div class="auth-input-group"><input id="auth-password" name="password" type="password" minlength="8" autocomplete="current-password" required placeholder=" "><label for="auth-password">Password</label><button class="auth-password-toggle" type="button" id="auth-password-toggle" aria-label="Show password">◉</button></div>
+        <button class="auth-submit" type="submit"><span id="auth-submit-label">Sign in</span><span aria-hidden="true">→</span></button>
+        <p id="access-note" class="auth-note" role="status" aria-live="polite"></p>
+      </form>
+      <div class="auth-links"><button type="button" id="auth-mode-toggle">Create an account</button><button type="button" id="auth-reset">Forgot password?</button></div>
+      <div class="auth-footer"><span class="auth-secure-dot"></span> PRIVATE ACCOUNT · SANDBOX MODE</div>
+    </div></div></div>
   </section>
 
   <main class="workspace" id="workspace-content">
