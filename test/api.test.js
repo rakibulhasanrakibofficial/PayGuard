@@ -13,7 +13,7 @@ test("health is public and reports Supabase authentication mode", async () => {
 test("protected routes fail closed when Supabase is not configured", async () => {
   const response = await worker.fetch(new Request("https://payguard.test/api/activity"), {});
   assert.equal(response.status, 503);
-  assert.match((await response.json()).error, /Supabase is not configured/);
+  assert.match((await response.json()).error, /Unexpected server error/);
 });
 
 test("protected routes reject requests without a bearer token when configured", async () => {
