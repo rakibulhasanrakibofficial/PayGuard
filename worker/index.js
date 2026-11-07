@@ -11,7 +11,7 @@ function json(data, status = 200, origin = FRONTEND_ORIGIN) {
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-PayGuard-Access-Key",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Vary": "Origin",
       "X-Content-Type-Options": "nosniff"
     }
@@ -260,7 +260,7 @@ export default {
     const reply = (data, status = 200) => json(data, status, origin || FRONTEND_ORIGIN);
     if (request.method === "OPTIONS") return new Response(null, {
       status: 204,
-      headers: { "Access-Control-Allow-Origin": origin || FRONTEND_ORIGIN, "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-PayGuard-Access-Key", "Access-Control-Max-Age": "86400", "Vary": "Origin" }
+      headers: { "Access-Control-Allow-Origin": origin || FRONTEND_ORIGIN, "Access-Control-Allow-Methods": "GET,POST,OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Max-Age": "86400", "Vary": "Origin" }
     });
     const url = new URL(request.url);
     const path = url.pathname;
