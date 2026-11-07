@@ -151,3 +151,11 @@ footer span:first-child { color: #66675e; }
 .activity time { display: block; color: var(--muted); font: 400 10px "DM Mono", monospace; }
 .verification-box { margin-top: 10px; padding: 10px 12px; border-radius: 5px; background: rgba(255,255,255,.7); border: 1px solid var(--line); font-size: 12px; }
 @media (max-width: 760px) { .row-actions { flex-wrap: wrap; } }
+
+/* --- Protected demo access gate --- */
+.access-gate { width: min(560px, calc(100% - 32px)); margin: 64px auto; }
+.access-panel { padding: 28px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: var(--shadow); }
+.access-panel h1 { margin: 10px 0; font-size: clamp(25px, 4vw, 34px); }
+.access-panel > p:not(.eyebrow) { color: var(--muted); font-size: 13px; line-height: 1.65; }
+.access-panel .button { margin-top: 8px; }
+#access-note { min-height: 18px; margin: 10px 0 0; }
