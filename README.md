@@ -17,6 +17,7 @@ Freelancers lose time chasing invoices and lose money to payment scams ("I overp
 - **Scam check backed by PayPal:** paste a client message. PayGuard flags scam patterns, extracts what the client *claims* (paid X, refund Y), then checks the related invoice in PayPal. "I paid $500, send back $300" against an unpaid invoice becomes **HIGH risk: PAYMENT_NOT_FOUND**. AI can only raise risk, never excuse it.
 - **Webhooks:** signature-verified with PayPal and processed once per event id (idempotent), shown in the activity feed.
 - Server-side secrets only. No API credentials in frontend code.
+- Optional shared-key gate for private demos and API-side request throttling.
 
 ## Stack
 
@@ -29,7 +30,7 @@ git clone https://github.com/rakibulhasanrakibofficial/PayGuard.git
 cd PayGuard
 npm install
 cp .env.example .env     # Windows: copy .env.example .env
-# add PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET (PayPal Sandbox app); ANTHROPIC_API_KEY is optional
+# add PayPal Sandbox credentials; configure PAYGUARD_ACCESS_KEY for a protected private demo
 npm start
 ```
 Open http://localhost:3000. Frontend and API run together on one origin.
@@ -40,7 +41,7 @@ Open http://localhost:3000. Frontend and API run together on one origin.
 3. PayGuard shows **HIGH risk**: PayPal has no payment on the invoice. Do not refund.
 4. Click **Simulate payment** on the invoice (Sandbox helper) and run the check again to see PayPal's answer change.
 
-`npm test` runs 17 tests (no credentials needed).
+`npm test` runs unit and API tests (no PayPal credentials needed).
 
 ## Local development
 
@@ -78,7 +79,9 @@ The Worker entry point is `worker/index.js`; `wrangler.toml` configures the Work
    - `PAYPAL_CLIENT_SECRET` — PayPal Sandbox REST app secret
    - `PAYPAL_WEBHOOK_ID` — Sandbox webhook ID (only needed for webhook verification)
    - `ANTHROPIC_API_KEY` — optional; enables Claude-assisted analysis
-7. Optional non-secret variables: `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` and `ANTHROPIC_MODEL=claude-sonnet-4-6`.
+7. Add the Worker secret `PAYGUARD_ACCESS_KEY` using a unique random value of at least 32 characters. The Pages frontend asks for this shared demo key and keeps it in the current tab's `sessionStorage`.
+8. Keep `PAYGUARD_REQUIRE_ACCESS_KEY=true` in Worker variables. The Worker refuses protected API requests if the key is missing or too short. `/api/health` and PayPal signature-verified webhooks remain public by design.
+9. Optional non-secret variables: `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` and `ANTHROPIC_MODEL=claude-sonnet-4-6`.
 
 Do not put secret values in GitHub source files. Keep PayPal in Sandbox mode.
 
@@ -121,11 +124,19 @@ Activity and webhook de-duplication use Cloudflare KV when a namespace named `PA
 
 ## Important limitations
 
-This is a learning MVP, **not production-ready financial software**. There is no user authentication or invoice ownership: one PayPal Sandbox merchant per deployment, and anyone who can reach the API can list that merchant's sandbox invoices. CORS is not authentication. Use only a dedicated PayPal Sandbox account and synthetic data, and add Cloudflare rate limiting/WAF rules before sharing a public demo. Webhooks are signature-verified and de-duplicated, but their only side effect is the activity feed; invoice state is always read live from PayPal. "Simulate payment" exists only for demos. Before real users or money, add authentication, ownership checks, persistent audit records, full checkout reconciliation, privacy controls and a security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
+This is a learning MVP, **not production-ready financial software**. The shared workspace key is only a private-demo gate, not individual user authentication: it provides no per-user identity, role, or invoice ownership. A person with the shared key can access the same Sandbox merchant data, and a key entered into a browser is visible to that browser's user. Worker throttling is best-effort per isolate, not globally shared; configure Cloudflare edge rate limiting/WAF as well. Keep PayGuard in Sandbox, use synthetic data, and never publish the shared key. Before real users or money, implement individual authentication, invoice ownership, durable audit records, reliable webhook processing, full checkout reconciliation, privacy controls, edge rate limiting and an independent security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
 
 ## Tests
 
-`npm test` runs unit tests for the verification logic (claim extraction, PayPal-vs-message verdicts, invoice parsing) and API tests against the Express adapter. The Cloudflare workflow also runs `node --check` before deploying. Live PayPal and Anthropic calls need credentials and are not covered by automated tests.
+`npm test` runs unit tests for verification logic plus API adapter and access-key tests. The Cloudflare workflow runs tests and syntax checks before deployment. Live PayPal and Anthropic calls need credentials and are not covered by automated tests.
+
+### Security behavior
+
+- `PAYGUARD_ACCESS_KEY` must be at least 32 characters. The static frontend sends it in `X-PayGuard-Access-Key` and stores it only in the current tab's `sessionStorage`.
+- `PAYGUARD_REQUIRE_ACCESS_KEY=true` makes protected API routes fail closed when the secret is missing. The Cloudflare config enables this by default.
+- `/api/health` is public and reveals configuration flags. `/api/paypal/webhook` bypasses the shared key only because PayPal signature verification is mandatory on that route.
+- Worker-level throttling is best-effort per isolate. Configure Cloudflare edge rate limiting/WAF as well.
+- This is a shared-key demo gate, not production authentication or invoice-level authorization.
 
 
 ## Optional design workflow (Hallmark)
