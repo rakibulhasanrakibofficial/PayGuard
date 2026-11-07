@@ -561,3 +561,42 @@ input,select,textarea,.auth-input-group input,.reminder-form{
   box-shadow:inset 5px 5px 10px rgba(177,190,205,.42),inset -5px -5px 10px rgba(255,255,255,.8)!important;
 }
 #access-gate .auth-input-group input{background:#e5edf5!important}
+
+
+/* Final palette: soft sage-mint neumorphism. Layout and components unchanged. */
+:root{
+  --paper:#eaf1ec!important;
+  --surface:#eaf1ec!important;
+  --surface-soft:#e4ede6!important;
+  --ink:#2d4038!important;
+  --muted:#7c9085!important;
+  --line:#d6e3d9!important;
+  --line-strong:#cbdccf!important;
+  --coral:#258d76!important;
+  --coral-dark:#18735f!important;
+  --coral-soft:#dcece3!important;
+  background:#eaf1ec!important;
+}
+html,body{background:#eaf1ec!important;color:#2d4038!important}
+.topbar{background:rgba(234,241,236,.96)!important}
+.hero-panel,.workflow-nav,.tool-card,.dashboard-card,.access-panel,
+.auth-card,#access-gate.access-gate:not([hidden]),
+.auth-bg-circle,.auth-logo,.auth-submit,.auth-password-toggle,
+.brand-mark,.environment,.button-secondary,.mini-button,
+.proof-icon,.card-icon,.badge,.reminder-form,.trust-note,.trust-symbol{
+  background-color:#eaf1ec!important;
+}
+input,select,textarea,.auth-input-group input,
+#access-gate .auth-input-group:after{
+  background-color:#e3ede6!important;
+}
+.auth-card,#access-gate .auth-card,.hero-panel,.tool-card,.dashboard-card,
+.workflow-nav,.auth-logo,.auth-submit,.brand-mark,.card-icon,.proof-icon,
+.auth-bg-circle{
+  box-shadow:9px 9px 20px rgba(174,191,179,.52),-9px -9px 20px rgba(255,255,255,.82)!important;
+}
+input,select,textarea,.auth-input-group input,.reminder-form{
+  box-shadow:inset 5px 5px 10px rgba(174,191,179,.46),inset -5px -5px 10px rgba(255,255,255,.84)!important;
+}
+#access-gate .auth-input-group input{background:#e3ede6!important}
+#access-gate .auth-bg-circle{background:#eaf1ec!important}
