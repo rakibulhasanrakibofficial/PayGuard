@@ -492,3 +492,31 @@ body:has(#access-gate:not([hidden])) footer{visibility:hidden!important}
  #access-gate .auth-wrapper{flex-basis:auto!important;width:min(390px,calc(100vw - 36px))!important;max-width:calc(100vw - 36px)!important}
  #access-gate .auth-card{padding:32px 24px!important;border-radius:26px!important}
 }
+
+
+/* Subtle cool-blue tint — preserve the approved layout */
+#access-gate.access-gate:not([hidden]),
+#access-gate .auth-card,
+#access-gate .auth-input-group:after,
+#access-gate .auth-logo,
+#access-gate .auth-submit,
+#access-gate .auth-password-toggle{
+  background-color:#eaf1f6!important;
+}
+#access-gate .auth-bg-circle{
+  background:#eaf1f6!important;
+  box-shadow:15px 15px 30px rgba(170,185,199,.48),-15px -15px 30px rgba(255,255,255,.9)!important;
+}
+#access-gate .auth-card{
+  box-shadow:14px 14px 30px rgba(170,185,199,.52),-14px -14px 30px rgba(255,255,255,.92)!important;
+}
+#access-gate .auth-logo{
+  box-shadow:9px 9px 18px rgba(170,185,199,.5),-9px -9px 18px rgba(255,255,255,.92)!important;
+}
+#access-gate .auth-input-group input{
+  background:#eaf1f6!important;
+  box-shadow:inset 6px 6px 12px rgba(170,185,199,.48),inset -6px -6px 12px rgba(255,255,255,.92)!important;
+}
+#access-gate .auth-submit{
+  box-shadow:8px 8px 16px rgba(170,185,199,.5),-8px -8px 16px rgba(255,255,255,.92)!important;
+}
