@@ -1,5 +1,5 @@
-import { ruleBasedAnalysis, extractClaims, applyVerification, normalizeInvoice, isPaid, parseJobText, reminderTemplate } from "./lib.js";
-import { verifySupabaseUser, saveInvoiceOwner, ownsInvoice, listOwnedInvoiceIds, addUserActivity, getUserActivity } from "./supabase.js";
+import { ruleBasedAnalysis, extractClaims, applyVerification, normalizeInvoice, isPaid, parseJobText, reminderTemplate, extractCaptures, findCaptureInInvoices } from "./lib.js";
+import { verifySupabaseUser, saveInvoiceOwner, ownsInvoice, listOwnedInvoiceIds, addUserActivity, getUserActivity, saveCaptureOwner, getCaptureOwner } from "./supabase.js";
 
 const FRONTEND_ORIGIN = "https://rakibulhasanrakibofficial.github.io";
 const CURRENCIES = new Set(["USD", "EUR", "GBP", "CAD", "AUD"]);
@@ -121,7 +121,43 @@ async function paypalRequest(path, env, options = {}) {
 
 const INVOICE_ID = /^INV2-[A-Za-z0-9-]{4,60}$/;
 const invoiceIdFrom = (id) => { if (!INVOICE_ID.test(id || "")) fail("Invalid invoice ID.", 400); return encodeURIComponent(id); };
-async function getInvoice(id, env) { return normalizeInvoice(await paypalRequest(`/v2/invoicing/invoices/${invoiceIdFrom(id)}`, env)); }
+async function getRawInvoice(id, env) { return paypalRequest(`/v2/invoicing/invoices/${invoiceIdFrom(id)}`, env); }
+async function getInvoice(id, env) { return normalizeInvoice(await getRawInvoice(id, env)); }
+
+/* ---------------- Capture ownership (secure capture-ID lookup) ---------------- */
+// PayPal capture ids are alphanumeric (typically 17 chars); allow the
+// separators PayPal-style ids can contain, bounded so lookups stay cheap.
+const CAPTURE_ID = /^[A-Za-z0-9_-]{8,64}$/;
+// Fallback lookup scans the caller's owned invoices one by one in PayPal.
+// Cap the scan (the owned-id list itself is capped at 100 in supabase.js)
+// so one lookup cannot fan out into an unbounded number of PayPal calls.
+const CAPTURE_LOOKUP_MAX_INVOICES = 50;
+
+// Best-effort: record any captures on an invoice the caller already fetched
+// (and owns) so future capture lookups can use the fast path. The mapping
+// is only a cache — lookups re-verify against PayPal — so a failure here
+// must never fail the request that happened to see the invoice.
+async function recordCaptures(env, user, invoice) {
+  if (!user || !invoice) return;
+  for (const capture of extractCaptures(invoice)) {
+    try { await saveCaptureOwner(env, user, capture); } catch { /* cache write only */ }
+  }
+}
+
+function captureResult(capture, invoice) {
+  return {
+    verified: true,
+    captureId: capture.captureId,
+    invoiceId: capture.invoiceId,
+    invoiceNumber: invoice?.number || capture.invoiceId,
+    status: capture.status,
+    amount: capture.amount,
+    date: capture.date,
+    source: "PayPal API",
+    environment: "SANDBOX",
+    message: "PayPal confirms this capture is recorded on one of your invoices."
+  };
+}
 async function listInvoices(env) {
   const data = await paypalRequest("/v2/invoicing/invoices?page=1&page_size=20&total_required=true", env);
   return (data.items || []).map(normalizeInvoice).sort((a, b) => String(b.created).localeCompare(String(a.created)));
@@ -302,6 +338,7 @@ export default {
         if (!(await ownsInvoice(env, user, id))) fail("Invoice not found in your account.", 404);
         if (action === "verify" && request.method === "GET") {
           const inv = await getInvoice(id, env);
+          await recordCaptures(env, user, inv);
           const verified = isPaid(inv);
           return reply({ verified, invoice: inv, source: "PayPal API", message: verified ? "PayPal confirms this invoice is fully paid." : `PayPal records ${inv.paid.toFixed(2)} of ${inv.total.toFixed(2)} ${inv.currency} (status ${inv.status}).` });
         }
@@ -319,8 +356,54 @@ export default {
           if (inv.due <= 0) fail("This invoice has nothing left to pay.", 400);
           await paypalRequest(`/v2/invoicing/invoices/${invoiceIdFrom(id)}/payments`, env, { method: "POST", body: JSON.stringify({ method: "OTHER", note: "Simulated Sandbox payment from PayGuard demo", payment_date: new Date().toISOString().slice(0, 10), amount: { currency_code: inv.currency, value: inv.due.toFixed(2) } }) });
           await addUserActivity(env, user, "payment", `Sandbox payment recorded on ${inv.number}`);
-          return reply({ invoice: await getInvoice(id, env) });
+          const updated = await getInvoice(id, env);
+          await recordCaptures(env, user, updated);
+          return reply({ invoice: updated });
         }
+      }
+
+      // Ownership-safe capture lookup. This NEVER calls PayPal's Payments
+      // capture endpoint with the supplied id and never reveals whether a
+      // capture exists outside the caller's own invoices: a capture that
+      // belongs to another user and one that does not exist at all both
+      // return the same CAPTURE_NOT_FOUND response. Auth is the same as
+      // every other protected route: verifySupabaseUser already ran above
+      // (and enforceRateLimit put this path in the "read" group).
+      if (request.method === "POST" && path === "/api/captures/lookup") {
+        const input = await bodyJson(request);
+        const captureId = typeof input.captureId === "string" ? input.captureId.trim() : "";
+        if (!CAPTURE_ID.test(captureId)) fail("Invalid capture ID.", 400);
+
+        // Fast path: a mapping recorded earlier, but only if it belongs to
+        // the caller — and even then the capture is re-extracted from the
+        // live PayPal invoice before anything is returned.
+        let mapped = null;
+        try { mapped = await getCaptureOwner(env, captureId); } catch { mapped = null; }
+        if (mapped?.paypal_invoice_id && mapped.user_id === user.id) {
+          const raw = await getRawInvoice(mapped.paypal_invoice_id, env).catch(() => null);
+          const match = raw ? findCaptureInInvoices([raw], captureId) : null;
+          if (match) {
+            await addUserActivity(env, user, "capture", `Capture verified on invoice ${mapped.paypal_invoice_id}`);
+            return reply(captureResult(match, normalizeInvoice(raw)));
+          }
+          // Stale mapping (capture no longer on that invoice): fall through
+          // to the scan instead of trusting the stored row.
+        }
+
+        // Fallback: scan only the caller's own invoices, fetched from
+        // PayPal by owned id, capped at CAPTURE_LOOKUP_MAX_INVOICES.
+        const ownedIds = (await listOwnedInvoiceIds(env, user)).slice(0, CAPTURE_LOOKUP_MAX_INVOICES);
+        for (const invoiceId of ownedIds) {
+          const raw = await getRawInvoice(invoiceId, env).catch(() => null);
+          if (!raw) continue;
+          const match = findCaptureInInvoices([raw], captureId);
+          if (match) {
+            try { await saveCaptureOwner(env, user, match); } catch { /* cache write only */ }
+            await addUserActivity(env, user, "capture", `Capture verified on invoice ${invoiceId}`);
+            return reply(captureResult(match, normalizeInvoice(raw)));
+          }
+        }
+        return reply({ error: "Capture not found in your invoices.", code: "CAPTURE_NOT_FOUND", verified: false }, 404);
       }
 
       if (request.method === "POST" && path === "/api/scam/analyze") {
@@ -344,13 +427,6 @@ export default {
         const result = applyVerification(analysis, claims, invoice);
         await addUserActivity(env, user, "scam", `Scam check: ${result.riskLevel}${result.verification?.result ? " (" + result.verification.result + ")" : ""}`);
         return reply(result);
-      }
-
-      r = m(/^\/api\/payments\/capture\/([A-Za-z0-9_-]{5,100})$/);
-      if (request.method === "GET" && r) {
-        fail("Capture lookup is disabled until capture ownership can be verified.", 403);
-        const capture = await paypalRequest(`/v2/payments/captures/${encodeURIComponent(r[1])}`, env, { method: "GET" });
-        return reply({ verified: true, captureId: capture.id, status: capture.status, amount: capture.amount, createTime: capture.create_time, updateTime: capture.update_time, source: "PayPal API", environment: "SANDBOX" });
       }
 
       if (request.method === "POST" && path === "/api/paypal/webhook") {

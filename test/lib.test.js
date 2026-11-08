@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ruleBasedAnalysis, extractClaims, applyVerification, parseJobText, normalizeInvoice, isPaid, reminderTemplate } from "../worker/lib.js";
+import { ruleBasedAnalysis, extractClaims, applyVerification, parseJobText, normalizeInvoice, isPaid, reminderTemplate, extractCaptures, findCaptureInInvoices } from "../worker/lib.js";
 
 test("flags overpayment and refund pressure as high risk", () => {
   const r = ruleBasedAnalysis("I overpaid you. Refund the difference urgently with a payment screenshot.");
@@ -71,4 +71,66 @@ test("normalizes a PayPal invoice and detects paid state", () => {
 });
 test("reminder template mentions invoice number", () => {
   assert.match(reminderTemplate({ client: "Ann Lee", number: "0007", due: 50, currency: "USD", dueDate: "2026-11-01" }, 5).subject, /0007/);
+});
+
+const rawPaidInvoice = (over = {}) => ({
+  id: "INV2-AAAA-BBBB", status: "PAID",
+  detail: { invoice_number: "0001", currency_code: "USD" },
+  amount: { value: "200.00" },
+  payments: {
+    paid_amount: { value: "200.00" },
+    transactions: [
+      { transaction_id: "8AB12345CD678901E", transaction_type: "CAPTURE", status: "PAID", amount: { currency_code: "USD", value: "200.00" }, payment_date: "2026-11-07" },
+      { transaction_id: "7XY98765ZY432109F", transaction_type: "REFUND", status: "PAID", amount: { currency_code: "USD", value: "50.00" }, payment_date: "2026-11-08" }
+    ]
+  },
+  ...over
+});
+
+test("extracts only the capture from an invoice's payment transactions", () => {
+  const captures = extractCaptures(rawPaidInvoice());
+  assert.equal(captures.length, 1);
+  assert.deepEqual(captures[0], {
+    captureId: "8AB12345CD678901E",
+    invoiceId: "INV2-AAAA-BBBB",
+    status: "PAID",
+    amount: { value: "200.00", currency_code: "USD" },
+    date: "2026-11-07"
+  });
+});
+test("extracts captures from a normalized invoice too", () => {
+  const captures = extractCaptures(normalizeInvoice(rawPaidInvoice()));
+  assert.equal(captures.length, 1);
+  assert.equal(captures[0].captureId, "8AB12345CD678901E");
+});
+test("finds a capture in the caller's invoices, and not outside them", () => {
+  const mine = rawPaidInvoice();
+  const someoneElses = rawPaidInvoice({ id: "INV2-CCCC-DDDD" });
+  // The capture is on `someoneElses`, but the caller-owned set is only
+  // `mine` with its transactions removed: lookup must not find it.
+  const myUnpaid = rawPaidInvoice({ payments: { paid_amount: { value: "0.00" }, transactions: [] } });
+  assert.equal(findCaptureInInvoices([myUnpaid], "8AB12345CD678901E"), null);
+  assert.equal(findCaptureInInvoices([mine], "8AB12345CD678901E")?.invoiceId, "INV2-AAAA-BBBB");
+  assert.equal(findCaptureInInvoices([someoneElses], "DOESNOTEXIST1"), null);
+  assert.equal(someoneElses.id, "INV2-CCCC-DDDD");
+});
+test("non-capture transactions are ignored, even with a transaction id", () => {
+  const inv = rawPaidInvoice({
+    payments: { transactions: [
+      { transaction_id: "11111111111111111", transaction_type: "OTHER", status: "PAID", amount: { currency_code: "USD", value: "10.00" } },
+      { transaction_id: "22222222222222222", status: "PAID", amount: { currency_code: "USD", value: "10.00" } }
+    ] }
+  });
+  assert.deepEqual(extractCaptures(inv), []);
+});
+test("malformed invoices yield no captures instead of throwing", () => {
+  assert.deepEqual(extractCaptures(null), []);
+  assert.deepEqual(extractCaptures(undefined), []);
+  assert.deepEqual(extractCaptures({}), []);
+  assert.deepEqual(extractCaptures({ payments: {} }), []);
+  assert.deepEqual(extractCaptures({ payments: { transactions: "nope" } }), []);
+  assert.deepEqual(extractCaptures({ payments: { transactions: [null, 42, {}] } }), []);
+  assert.equal(findCaptureInInvoices(null, "8AB12345CD678901E"), null);
+  assert.equal(findCaptureInInvoices([null, {}], "8AB12345CD678901E"), null);
+  assert.equal(findCaptureInInvoices([rawPaidInvoice()], ""), null);
 });

@@ -12,7 +12,8 @@ Freelancers lose time chasing invoices and lose money to payment scams ("I overp
 
 - **AI invoice drafting:** describe the job in one sentence ("Invoice Rahim (rahim@example.com) for 5 hours of logo design at $20/hr, due in 10 days"). Claude fills the form; you review it; PayPal's Invoicing API creates and sends it. Works without an AI key through a built-in parser.
 - **Invoice dashboard:** live list from PayPal with status (awaiting, overdue, partly paid, paid), refreshed every 20 seconds.
-- **Payment verification:** the invoice-level "Verify" action asks PayPal whether an invoice is truly paid. Standalone capture-ID lookup is intentionally unavailable until capture ownership can be securely mapped.
+- **Payment verification:** the invoice-level "Verify" action asks PayPal whether an invoice is truly paid.
+- **Ownership-safe capture-ID lookup:** paste a capture ID and PayGuard confirms it only if that capture is recorded on one of *your own* invoices. It never calls PayPal's Payments capture endpoint with an arbitrary ID (the shared Sandbox merchant credentials would otherwise leak other users' payments): it checks the capture-owner mapping in Supabase (populated whenever you verify a paid invoice) and otherwise scans only your owned invoices in PayPal. A capture that belongs to someone else returns the same `CAPTURE_NOT_FOUND` as one that does not exist.
 - **Late-payment reminders:** AI writes a polite reminder with the right tone; PayPal delivers it.
 - **Scam check backed by PayPal:** paste a client message. PayGuard flags scam patterns, extracts what the client *claims* (paid X, refund Y), then checks the related invoice in PayPal. "I paid $500, send back $300" against an unpaid invoice becomes **HIGH risk: PAYMENT_NOT_FOUND**. AI can only raise risk, never excuse it.
 - **Webhooks:** signature-verified with PayPal and processed once per event id (idempotent), shown in the activity feed.
@@ -69,13 +70,13 @@ For local development, use a `.dev.vars` file containing these values. It is ign
 The multi-user branch uses Supabase Auth for email/password sign-in and PostgREST tables for invoice ownership and per-user activity.
 
 1. Create a Supabase project at https://supabase.com/dashboard.
-2. In **SQL Editor**, run the complete migration in `supabase/migrations/202611080001_multi_user_ownership.sql`.
+2. In **SQL Editor**, run the complete migration in `supabase/migrations/202611080001_multi_user_ownership.sql`, then `supabase/migrations/202611080002_capture_ownership.sql` (adds `payguard_capture_owners`, the capture → invoice → user mapping used by capture-ID lookup).
 3. In **Project Settings → API**, copy the Project URL and publishable/anon key. Add them to `public/config.js` as `PAYGUARD_SUPABASE_URL` and `PAYGUARD_SUPABASE_ANON_KEY`. These are public browser settings; never put the service-role key in frontend code.
 4. In **Authentication → URL Configuration**, add the GitHub Pages URL `https://rakibulhasanrakibofficial.github.io/PayGuard/` to the allowed redirect URLs.
 5. In Cloudflare Worker **Settings → Variables and Secrets**, add secrets `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The service-role key must remain only in the Worker secret store.
 6. Deploy the Worker, then deploy the Pages frontend. New users create accounts with email and password; if email confirmation is enabled, they must confirm their email before signing in.
 
-The Worker verifies every Supabase access token against Supabase Auth. Invoice IDs are mapped to the creating user; list and invoice actions are restricted to that owner. User activity is stored separately. Existing PayPal invoices created before ownership tracking are not automatically assigned to anyone. Capture-ID lookup is disabled until capture ownership can be securely mapped.
+The Worker verifies every Supabase access token against Supabase Auth. Invoice IDs are mapped to the creating user; list and invoice actions are restricted to that owner. User activity is stored separately. Existing PayPal invoices created before ownership tracking are not automatically assigned to anyone. Capture IDs are mapped the same way: a capture is recorded against the user who owns the invoice it was found on (when that invoice is verified or a sandbox payment is recorded, and during lookup itself), and capture lookup only ever searches the caller's own invoices — at most the 50 most recent owned invoice IDs per lookup.
 
 Supabase Auth and the ownership schema must be configured before protected API routes will work. Keep PayPal Sandbox enabled; this is not a production-ready payments platform.
 
@@ -125,7 +126,7 @@ The GitHub Pages workflow writes the backend origin into `public/config.js` duri
 | POST | `/api/invoices/:id/remind` | Send the reminder through PayPal |
 | POST | `/api/invoices/:id/sandbox-pay` | Sandbox only: simulate the client paying |
 | POST | `/api/scam/analyze` | Risk analysis, optionally verified against an invoice (`invoiceId`) |
-| — | Capture-ID lookup | Disabled until capture ownership can be securely mapped |
+| POST | `/api/captures/lookup` | Ownership-safe capture lookup: body `{captureId}`; searches only the caller's owned invoices (plus their capture-owner mapping) and re-verifies in PayPal. Returns `CAPTURE_NOT_FOUND` (404) when the capture is not on a caller's invoice, whether or not it exists elsewhere |
 | POST | `/api/paypal/webhook` | Verify signature, process each event once |
 | GET | `/api/activity` | Recent events |
 
@@ -139,7 +140,7 @@ Activity and webhook de-duplication use Cloudflare KV when a namespace named `PA
 
 ## Important limitations
 
-This is a learning MVP, **not production-ready financial software**. Account authentication is individual, but PayPal API credentials still connect to one shared Sandbox merchant. Invoice ownership is enforced by PayGuard metadata; invoices created before this feature are not assigned to users. Worker throttling is best-effort per isolate, not globally shared; configure Cloudflare edge rate limiting/WAF as well. Keep PayGuard in Sandbox, use synthetic data, and never publish the shared key. Before real users or money, implement individual authentication, invoice ownership, durable audit records, reliable webhook processing, full checkout reconciliation, privacy controls, edge rate limiting and an independent security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
+This is a learning MVP, **not production-ready financial software**. Account authentication is individual, but PayPal API credentials still connect to one shared Sandbox merchant. Invoice ownership is enforced by PayGuard metadata; invoices created before this feature are not assigned to users. Worker throttling is best-effort per isolate, not globally shared; configure Cloudflare edge rate limiting/WAF as well. Capture-ID lookup only covers captures recorded on invoices the caller owns and scans at most 50 owned invoices per lookup, so a capture on an unassigned, pre-ownership invoice returns `CAPTURE_NOT_FOUND`. Keep PayGuard in Sandbox, use synthetic data, and never publish the shared key. Before real users or money, implement individual authentication, invoice ownership, durable audit records, reliable webhook processing, full checkout reconciliation, privacy controls, edge rate limiting and an independent security review. Never treat screenshots, forwarded emails or AI conclusions as proof of payment.
 
 ## Tests
 

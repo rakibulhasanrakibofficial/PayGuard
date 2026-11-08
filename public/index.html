@@ -113,10 +113,16 @@
         <div class="card-topline"><span class="eyebrow">03 / PAYMENT VERIFICATION</span><span class="card-icon verify-icon" aria-hidden="true">✓</span></div>
         <div class="verification-copy">
           <h2 id="verify-title">Verify safely</h2>
-          <p class="card-description">Never trust a screenshot, email, or a capture ID pasted by a client. Verify only an invoice that appears in your own dashboard.</p>
+          <p class="card-description">Never trust a screenshot or an email. Verify an invoice from your own dashboard — or a capture ID, which PayGuard only confirms if it is recorded on one of your own invoices.</p>
           <a class="button button-secondary" href="#invoices">Go to your invoices <span aria-hidden="true">→</span></a>
         </div>
         <p class="field-hint">Use the <strong>Verify</strong> action beside an invoice. PayGuard checks its status directly with PayPal Sandbox.</p>
+        <form id="capture-form">
+          <label>Capture ID<input name="captureId" maxlength="64" required placeholder="e.g. 8AB12345CD678901E" autocomplete="off"></label>
+          <button class="button button-primary" type="submit"><span>Verify capture ID</span><span aria-hidden="true">→</span></button>
+          <p class="field-hint">PayGuard searches only your own invoices in PayPal. A capture that belongs to someone else looks exactly like one that does not exist.</p>
+        </form>
+        <div id="capture-result" class="result" aria-live="polite" aria-atomic="true"></div>
       </article>
     </section>
 
