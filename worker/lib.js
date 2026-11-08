@@ -117,8 +117,67 @@ export function normalizeInvoice(inv) {
     due: inv.due_amount?.value != null ? num(inv.due_amount.value) : Math.max(total - paid, 0),
     dueDate: inv.detail?.payment_term?.due_date || null,
     created: inv.detail?.invoice_date || null,
-    link: inv.detail?.metadata?.recipient_view_url || null
+    link: inv.detail?.metadata?.recipient_view_url || null,
+    // Preserved (raw objects) so capture extraction also works on normalized
+    // invoices; see extractCaptures. Same source the paid total came from.
+    transactions: Array.isArray(inv.payments?.transactions) ? inv.payments.transactions : []
   };
+}
+
+// PayPal invoice payments live under `payments.transactions` on the raw
+// invoice (the same `payments` object normalizeInvoice reads `paid_amount`
+// from above); normalized invoices carry them as `transactions`. Individual
+// transactions name their kind in `transaction_type` and their id in
+// `transaction_id` (some shapes use an explicit `capture_id` instead).
+// Only CAPTURE transactions are captures: refunds, sales recorded as other
+// types, adjustments etc. must never be reported as a verified capture.
+const CAPTURE_TYPES = new Set(["CAPTURE", "PAYMENT_CAPTURE"]);
+
+export function extractCaptures(invoice) {
+  if (!invoice || typeof invoice !== "object") return [];
+  const transactions = Array.isArray(invoice.payments?.transactions)
+    ? invoice.payments.transactions
+    : Array.isArray(invoice.transactions) ? invoice.transactions : [];
+  const invoiceId = invoice.id || invoice.invoiceId || null;
+  const invoiceCurrency = invoice.detail?.currency_code || invoice.currency || null;
+  const seen = new Set();
+  const captures = [];
+  for (const tx of transactions) {
+    if (!tx || typeof tx !== "object") continue;
+    const type = String(tx.transaction_type || tx.type || "").toUpperCase();
+    // A transaction that declares a non-capture type is never a capture,
+    // even if it happens to reference a capture id (e.g. a refund of one).
+    if (type && !CAPTURE_TYPES.has(type)) continue;
+    // With no declared type, only an explicit capture id proves a capture;
+    // a bare transaction_id could be any kind of transaction.
+    const captureId = tx.capture_id || tx.captureId || (type ? (tx.transaction_id || tx.id) : null);
+    if (typeof captureId !== "string" || !captureId || seen.has(captureId)) continue;
+    seen.add(captureId);
+    captures.push({
+      captureId,
+      invoiceId,
+      status: tx.status != null ? String(tx.status) : null,
+      amount: {
+        value: tx.amount?.value != null ? String(tx.amount.value) : null,
+        currency_code: tx.amount?.currency_code || invoiceCurrency
+      },
+      date: tx.payment_date || tx.transaction_date || tx.create_time || tx.date || null
+    });
+  }
+  return captures;
+}
+
+// Searches only the invoices it is given. Callers pass the *caller's own*
+// invoices, so a capture belonging to someone else is simply "not found" —
+// this never probes PayPal (or another user's invoices) with an arbitrary id.
+export function findCaptureInInvoices(invoices, captureId) {
+  if (!Array.isArray(invoices) || typeof captureId !== "string" || !captureId.trim()) return null;
+  const target = captureId.trim();
+  for (const invoice of invoices) {
+    const match = extractCaptures(invoice).find((capture) => capture.captureId === target);
+    if (match) return match;
+  }
+  return null;
 }
 
 export const isPaid = (inv) => ["PAID", "MARKED_AS_PAID"].includes(inv.status) && inv.total > 0 && inv.paid >= inv.total;

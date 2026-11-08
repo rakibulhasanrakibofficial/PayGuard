@@ -79,6 +79,30 @@ export async function listOwnedInvoiceIds(env, user) {
   return Array.isArray(rows) ? rows.map(row => row.paypal_invoice_id).filter(Boolean) : [];
 }
 
+export async function saveCaptureOwner(env, user, capture) {
+  const { url, service } = config(env);
+  await supabaseFetch(`${url}/rest/v1/payguard_capture_owners`, {
+    method: "POST",
+    headers: restHeaders(service, "resolution=merge-duplicates,return=minimal"),
+    body: JSON.stringify({
+      capture_id: capture.captureId,
+      paypal_invoice_id: capture.invoiceId,
+      user_id: user.id,
+      amount_value: capture.amount?.value ?? null,
+      currency_code: capture.amount?.currency_code ?? null,
+      status: capture.status ?? null
+    })
+  });
+}
+
+export async function getCaptureOwner(env, captureId) {
+  const { url, service } = config(env);
+  const rows = await supabaseFetch(`${url}/rest/v1/payguard_capture_owners?select=capture_id,paypal_invoice_id,user_id,amount_value,currency_code,status,created_at&capture_id=eq.${encodeURIComponent(captureId)}&limit=1`, {
+    headers: restHeaders(service)
+  });
+  return Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+}
+
 export async function addUserActivity(env, user, eventType, message) {
   const { url, service } = config(env);
   await supabaseFetch(`${url}/rest/v1/payguard_user_activity`, {

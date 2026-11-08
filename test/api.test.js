@@ -23,6 +23,15 @@ test("protected routes reject requests without a bearer token when configured", 
   assert.equal(response.status, 503);
 });
 
+test("capture lookup fails closed when Supabase is not configured", async () => {
+  const response = await worker.fetch(new Request("https://payguard.test/api/captures/lookup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ captureId: "8AB12345CD678901E" })
+  }), {});
+  assert.equal(response.status, 503);
+});
+
 test("Worker CORS preflight allows bearer authorization", async () => {
   const response = await worker.fetch(new Request("https://payguard.test/api/activity", {
     method: "OPTIONS",

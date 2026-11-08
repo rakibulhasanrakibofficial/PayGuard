@@ -9,9 +9,9 @@ async function request(url, options = {}) {
   const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
   if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
   const response = await fetch(`${API_BASE}${url}`, { ...options, headers });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Request failed.");
-  return data;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Request failed.");
+  return payload;
 }
 const post = (url, body) => request(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) });
 function show(id, html, tone = "") { const el = $(id); el.className = "result " + tone; el.innerHTML = html; }
@@ -68,7 +68,15 @@ $("#scam-form").addEventListener("submit", async e => {
   } catch (err) { show("#scam-result", esc(err.message), "risk-high"); } finally { busy(form, false); }
 });
 
-/* Capture-ID lookup is intentionally not exposed: ownership cannot be safely established. */
+/* ---------- Capture-ID lookup (ownership-safe: server searches only your invoices) ---------- */
+$("#capture-form").addEventListener("submit", async e => {
+  e.preventDefault(); const form = e.currentTarget; busy(form, true); show("#capture-result", "");
+  try {
+    const data = await post("/api/captures/lookup", { captureId: new FormData(form).get("captureId") });
+    show("#capture-result", `<h3>Capture verified</h3><p>Capture <b>${esc(data.captureId)}</b> is recorded on your invoice <b>${esc(data.invoiceNumber || data.invoiceId)}</b>.</p><p>Status: ${esc(data.status || "unknown")} · Amount: ${money(data.amount?.value, data.amount?.currency_code)}${data.date ? ` · ${esc(data.date)}` : ""}</p><p>${esc(data.message || "")}</p>`, "risk-low");
+    loadActivity();
+  } catch (err) { show("#capture-result", esc(err.message), "risk-high"); } finally { busy(form, false); }
+});
 
 /* ---------- Dashboard ---------- */
 function statusBadge(i) {
